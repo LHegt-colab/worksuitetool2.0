@@ -30,6 +30,7 @@ export default function Meetings() {
   const [tags, setTags] = useState<V2Tag[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
+  const [tagFilter, setTagFilter] = useState('')
   const [selected, setSelected] = useState<V2Meeting | null>(null)
   const [selectedDetail, setSelectedDetail] = useState<V2Meeting | null>(null)
   const [deleteModal, setDeleteModal] = useState<string | null>(null)
@@ -51,6 +52,14 @@ export default function Meetings() {
     participants: '',
     notes: '',
     tag_ids: [] as string[],
+  })
+
+  // Pending actions — created when the meeting is saved
+  const [pendingActions, setPendingActions] = useState<Array<{
+    title: string; priority: string; due_date: string
+  }>>([])
+  const [newPendingAction, setNewPendingAction] = useState({
+    title: '', priority: 'medium', due_date: '',
   })
 
   const load = useCallback(async () => {
@@ -79,6 +88,8 @@ export default function Meetings() {
   async function selectMeeting(meeting: V2Meeting) {
     setSelected(meeting)
     setEditMode(false)
+    setPendingActions([])
+    setNewPendingAction({ title: '', priority: 'medium', due_date: '' })
     setForm({
       title: meeting.title,
       date: meeting.date,
@@ -100,12 +111,16 @@ export default function Meetings() {
     setEditMode(true)
     const today = new Date().toISOString().split('T')[0]
     setForm({ title: '', date: today, start_time: '', end_time: '', location: '', participants: '', notes: '', tag_ids: [] })
+    setPendingActions([])
+    setNewPendingAction({ title: '', priority: 'medium', due_date: '' })
   }
 
   async function handleSave() {
     if (!user || !form.title || !form.date) return
     setSaving(true)
     try {
+      let meetingId: string
+
       if (selected) {
         const updated = await updateMeeting(selected.id, {
           ...form,
@@ -115,11 +130,7 @@ export default function Meetings() {
           participants: form.participants || null,
           notes: form.notes || null,
         })
-        load()
-        const detail = await getMeeting(updated.id)
-        setSelected({ ...updated, tags: detail?.tags || [] })
-        setSelectedDetail(detail)
-        setEditMode(false)
+        meetingId = updated.id
       } else {
         const created = await createMeeting({
           user_id: user.id,
@@ -130,12 +141,29 @@ export default function Meetings() {
           participants: form.participants || null,
           notes: form.notes || null,
         } as CreateMeetingInput)
-        load()
-        const detail = await getMeeting(created.id)
-        setSelected({ ...created, tags: detail?.tags || [] })
-        setSelectedDetail(detail)
-        setEditMode(false)
+        meetingId = created.id
       }
+
+      // Create all pending actions linked to this meeting
+      for (const pa of pendingActions) {
+        await createAction({
+          user_id: user.id,
+          title: pa.title,
+          meeting_id: meetingId,
+          status: 'open',
+          priority: pa.priority,
+          due_date: pa.due_date || null,
+          start_date: pa.due_date || null,
+        })
+      }
+      setPendingActions([])
+      setNewPendingAction({ title: '', priority: 'medium', due_date: '' })
+
+      load()
+      const detail = await getMeeting(meetingId)
+      setSelected(detail ? { ...detail } : null)
+      setSelectedDetail(detail)
+      setEditMode(false)
     } finally {
       setSaving(false)
     }
@@ -190,7 +218,11 @@ export default function Meetings() {
     }
   }
 
-  const filtered = meetings.filter(m => !search || m.title.toLowerCase().includes(search.toLowerCase()))
+  const filtered = meetings.filter(m => {
+    if (search && !m.title.toLowerCase().includes(search.toLowerCase())) return false
+    if (tagFilter && !m.tags?.some(tag => tag.id === tagFilter)) return false
+    return true
+  })
 
   if (loading) return <PageSpinner />
 
@@ -201,7 +233,7 @@ export default function Meetings() {
         <Panel defaultSize={35} minSize={20} maxSize={60}>
           <div className="h-full flex flex-col border-r border-[var(--border)]">
             {/* Header */}
-            <div className="p-4 border-b border-[var(--border)] space-y-3 shrink-0">
+            <div className="p-4 border-b border-[var(--border)] space-y-2 shrink-0">
               <div className="flex items-center gap-2">
                 <Input
                   value={search}
@@ -214,6 +246,19 @@ export default function Meetings() {
                   {t('common.new')}
                 </Button>
               </div>
+              {/* Label filter */}
+              {tags.length > 0 && (
+                <select
+                  value={tagFilter}
+                  onChange={e => setTagFilter(e.target.value)}
+                  className="w-full text-xs rounded-lg border border-[var(--border)] bg-[var(--bg-card)] text-[var(--text-primary)] px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-primary-400"
+                >
+                  <option value="">{t('meetings.filterLabel')}</option>
+                  {tags.map(tag => (
+                    <option key={tag.id} value={tag.id}>{tag.name}</option>
+                  ))}
+                </select>
+              )}
             </div>
 
             {/* Meeting list */}
@@ -337,16 +382,110 @@ export default function Meetings() {
                         label={t('meetings.notes')}
                         value={form.notes}
                         onChange={e => setForm(f => ({ ...f, notes: e.target.value }))}
-                        rows={6}
+                        rows={5}
                         placeholder={t('meetings.notesPlaceholder')}
-                        className="min-h-40"
+                        className="min-h-32"
                       />
+
+                      {/* ── Acties toevoegen in het invoerscherm ── */}
+                      <div className="border border-[var(--border)] rounded-xl p-3 space-y-2 bg-[var(--bg-page)]">
+                        <p className="text-xs font-semibold text-[var(--text-primary)]">
+                          {t('meetings.meetingActions')}
+                        </p>
+
+                        {/* New pending action row */}
+                        <div className="flex gap-1.5 items-end">
+                          <div className="flex-1">
+                            <input
+                              type="text"
+                              value={newPendingAction.title}
+                              onChange={e => setNewPendingAction(p => ({ ...p, title: e.target.value }))}
+                              onKeyDown={e => {
+                                if (e.key === 'Enter' && newPendingAction.title.trim()) {
+                                  setPendingActions(prev => [...prev, { ...newPendingAction }])
+                                  setNewPendingAction({ title: '', priority: 'medium', due_date: '' })
+                                }
+                              }}
+                              placeholder={t('meetings.actionTitlePlaceholder')}
+                              className="w-full text-xs rounded-lg border border-[var(--border)] bg-[var(--bg-card)] text-[var(--text-primary)] px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-primary-400"
+                            />
+                          </div>
+                          <select
+                            value={newPendingAction.priority}
+                            onChange={e => setNewPendingAction(p => ({ ...p, priority: e.target.value }))}
+                            className="text-xs rounded-lg border border-[var(--border)] bg-[var(--bg-card)] text-[var(--text-primary)] px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-primary-400"
+                          >
+                            <option value="low">{t('actions.priority.low')}</option>
+                            <option value="medium">{t('actions.priority.medium')}</option>
+                            <option value="high">{t('actions.priority.high')}</option>
+                            <option value="urgent">{t('actions.priority.urgent')}</option>
+                          </select>
+                          <input
+                            type="date"
+                            value={newPendingAction.due_date}
+                            onChange={e => setNewPendingAction(p => ({ ...p, due_date: e.target.value }))}
+                            className="text-xs rounded-lg border border-[var(--border)] bg-[var(--bg-card)] text-[var(--text-primary)] px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-primary-400"
+                          />
+                          <button
+                            type="button"
+                            disabled={!newPendingAction.title.trim()}
+                            onClick={() => {
+                              if (!newPendingAction.title.trim()) return
+                              setPendingActions(prev => [...prev, { ...newPendingAction }])
+                              setNewPendingAction({ title: '', priority: 'medium', due_date: '' })
+                            }}
+                            className="text-xs px-2.5 py-1.5 rounded-lg bg-primary-500 text-white hover:bg-primary-600 disabled:opacity-40 disabled:cursor-not-allowed transition-colors shrink-0"
+                          >
+                            <Plus className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
+
+                        {/* Pending actions list */}
+                        {pendingActions.length > 0 && (
+                          <div className="space-y-1 mt-1">
+                            {pendingActions.map((pa, idx) => (
+                              <div key={idx} className="flex items-center gap-2 text-xs text-[var(--text-primary)] bg-[var(--bg-card)] rounded-lg px-2.5 py-1.5 border border-[var(--border)]">
+                                <div className={cn(
+                                  'w-2 h-2 rounded-full shrink-0',
+                                  pa.priority === 'urgent' ? 'bg-red-500'
+                                    : pa.priority === 'high' ? 'bg-orange-500'
+                                    : pa.priority === 'medium' ? 'bg-yellow-400'
+                                    : 'bg-green-500',
+                                )} />
+                                <span className="flex-1 font-medium truncate">{pa.title}</span>
+                                {pa.due_date && (
+                                  <span className="text-[var(--text-muted)] shrink-0">{pa.due_date}</span>
+                                )}
+                                <button
+                                  type="button"
+                                  onClick={() => setPendingActions(prev => prev.filter((_, i) => i !== idx))}
+                                  className="text-[var(--text-muted)] hover:text-red-500 transition-colors shrink-0"
+                                >
+                                  <X className="h-3.5 w-3.5" />
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+
+                        {pendingActions.length === 0 && (
+                          <p className="text-xs text-[var(--text-muted)]">
+                            {t('meetings.noLinkedActions')} — {t('meetings.actionTitlePlaceholder')}
+                          </p>
+                        )}
+                      </div>
+
                       <div className="flex gap-2 justify-end pt-2">
                         <Button variant="secondary" onClick={() => { setEditMode(false); if (!selected) { setSelected(null) } }}>
                           {t('common.cancel')}
                         </Button>
                         <Button onClick={handleSave} loading={saving} disabled={!form.title || !form.date}>
                           {t('common.save')}
+                          {pendingActions.length > 0 && (
+                            <span className="ml-1.5 text-xs bg-white/20 rounded-full px-1.5">
+                              +{pendingActions.length}
+                            </span>
+                          )}
                         </Button>
                       </div>
                     </div>

@@ -29,6 +29,7 @@ export default function Actions() {
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState('')
   const [priorityFilter, setPriorityFilter] = useState('')
+  const [tagFilter, setTagFilter] = useState('')
   const [modalOpen, setModalOpen] = useState(false)
   const [editingAction, setEditingAction] = useState<V2Action | null>(null)
   const [deleteModal, setDeleteModal] = useState<string | null>(null)
@@ -135,6 +136,7 @@ export default function Actions() {
     if (search && !a.title.toLowerCase().includes(search.toLowerCase())) return false
     if (statusFilter && a.status !== statusFilter) return false
     if (priorityFilter && a.priority !== priorityFilter) return false
+    if (tagFilter && !a.tags?.some(tag => tag.id === tagFilter)) return false
     return true
   })
 
@@ -177,6 +179,15 @@ export default function Actions() {
           options={priorityOptions}
           value={priorityFilter}
           onChange={e => setPriorityFilter(e.target.value)}
+          containerClassName="w-full sm:w-40"
+        />
+        <Select
+          options={[
+            { value: '', label: t('common.all') },
+            ...tags.map(tag => ({ value: tag.id, label: tag.name })),
+          ]}
+          value={tagFilter}
+          onChange={e => setTagFilter(e.target.value)}
           containerClassName="w-full sm:w-40"
         />
         <Button onClick={openNew} icon={<Plus className="h-4 w-4" />}>
