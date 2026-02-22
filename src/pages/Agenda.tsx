@@ -7,17 +7,18 @@ import {
   startOfYear, endOfYear, eachMonthOfInterval,
 } from 'date-fns'
 import { nl, enUS, sv } from 'date-fns/locale'
-import { ChevronLeft, ChevronRight, Calendar, Users, CheckSquare } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Calendar, Users, CheckSquare, Pencil, Trash2, Clock, MapPin, Check, X } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
 import { useAuth } from '@/contexts/AuthContext'
 import Button from '@/components/ui/Button'
 import { PageSpinner } from '@/components/ui/Spinner'
 import Input from '@/components/ui/Input'
 import Select from '@/components/ui/Select'
-import Modal from '@/components/ui/Modal'
-import { getMeetings, createMeeting } from '@/features/meetings/api'
-import { getActions, createAction } from '@/features/actions/api'
+import Modal, { ConfirmModal } from '@/components/ui/Modal'
+import { getMeetings, createMeeting, deleteMeeting } from '@/features/meetings/api'
+import { getActions, createAction, deleteAction, markActionDone } from '@/features/actions/api'
 import type { V2Meeting, V2Action } from '@/types/database.types'
-import { cn } from '@/lib/utils'
+import { cn, formatDate, priorityBgColor, statusBgColor } from '@/lib/utils'
 
 type AgendaView = 'day' | 'week' | 'month' | 'year'
 
@@ -63,6 +64,16 @@ export default function Agenda() {
   const [qcPriority, setQcPriority] = useState('medium')
   const [qcSaving,   setQcSaving]   = useState(false)
 
+  // Event detail modal
+  const [evtOpen,    setEvtOpen]    = useState(false)
+  const [evtType,    setEvtType]    = useState<'meeting' | 'action'>('meeting')
+  const [evtMeeting, setEvtMeeting] = useState<V2Meeting | null>(null)
+  const [evtAction,  setEvtAction]  = useState<V2Action | null>(null)
+  const [evtDeleteConfirm, setEvtDeleteConfirm] = useState(false)
+  const [evtDeleting,      setEvtDeleting]      = useState(false)
+  const [evtMarkingDone,   setEvtMarkingDone]   = useState(false)
+
+  const navigate  = useNavigate()
   const scrollRef = useRef<HTMLDivElement>(null)
 
   // ── Data loading ──────────────────────────────────────────────────────────
@@ -177,6 +188,51 @@ export default function Agenda() {
     }
   }
 
+  // ── Event detail handlers ─────────────────────────────────────────────────
+  function openMeeting(m: V2Meeting, e: React.MouseEvent) {
+    e.stopPropagation()
+    setEvtType('meeting')
+    setEvtMeeting(m)
+    setEvtAction(null)
+    setEvtOpen(true)
+  }
+
+  function openAction(a: V2Action, e: React.MouseEvent) {
+    e.stopPropagation()
+    setEvtType('action')
+    setEvtAction(a)
+    setEvtMeeting(null)
+    setEvtOpen(true)
+  }
+
+  async function handleEvtDelete() {
+    setEvtDeleting(true)
+    try {
+      if (evtType === 'meeting' && evtMeeting) {
+        await deleteMeeting(evtMeeting.id)
+      } else if (evtType === 'action' && evtAction) {
+        await deleteAction(evtAction.id)
+      }
+      setEvtOpen(false)
+      setEvtDeleteConfirm(false)
+      load()
+    } finally {
+      setEvtDeleting(false)
+    }
+  }
+
+  async function handleEvtMarkDone() {
+    if (!evtAction) return
+    setEvtMarkingDone(true)
+    try {
+      await markActionDone(evtAction.id)
+      setEvtOpen(false)
+      load()
+    } finally {
+      setEvtMarkingDone(false)
+    }
+  }
+
   if (loading) return <PageSpinner />
 
   // ── Week days for week view ───────────────────────────────────────────────
@@ -270,7 +326,8 @@ export default function Agenda() {
                 {actionsOn(current).map(a => (
                   <div
                     key={a.id}
-                    className="flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300"
+                    onClick={e => openAction(a, e)}
+                    className="flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 cursor-pointer hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-colors"
                   >
                     <span className={cn('w-1.5 h-1.5 rounded-full shrink-0', priorityColor(a.priority))} />
                     <span className="truncate max-w-32">{a.title}</span>
@@ -359,7 +416,9 @@ export default function Agenda() {
                     return (
                       <div
                         key={m.id}
-                        className="absolute left-2 right-2 z-10 rounded-md px-2 py-1 bg-purple-100 dark:bg-purple-900/40 border border-purple-300 dark:border-purple-700 overflow-hidden"
+                        onClick={e => openMeeting(m, e)}
+                        onDoubleClick={e => e.stopPropagation()}
+                        className="absolute left-2 right-2 z-10 rounded-md px-2 py-1 bg-purple-100 dark:bg-purple-900/40 border border-purple-300 dark:border-purple-700 overflow-hidden cursor-pointer hover:brightness-95 transition-all"
                         style={{ top, height: ht }}
                         title={m.title}
                       >
@@ -415,7 +474,8 @@ export default function Agenda() {
                         {dayActions.slice(0, 2).map(a => (
                           <div
                             key={a.id}
-                            className="text-xs flex items-center gap-0.5 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 rounded px-1 py-0.5 truncate"
+                            onClick={e => openAction(a, e)}
+                            className="text-xs flex items-center gap-0.5 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 rounded px-1 py-0.5 truncate cursor-pointer hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-colors"
                           >
                             <span className={cn('w-1.5 h-1.5 rounded-full shrink-0', priorityColor(a.priority))} />
                             <span className="truncate">{a.title}</span>
@@ -510,10 +570,7 @@ export default function Agenda() {
 
                       {/* Meeting events */}
                       {dayMeetings.map(m => {
-                        if (!m.start_time) {
-                          // No time → show as floating chip at top (handled in header)
-                          return null
-                        }
+                        if (!m.start_time) return null
                         const top = minToTop(timeToMin(m.start_time))
                         const ht  = m.end_time
                           ? Math.max(SLOT_H, minToTop(timeToMin(m.end_time)) - top)
@@ -521,7 +578,9 @@ export default function Agenda() {
                         return (
                           <div
                             key={m.id}
-                            className="absolute left-0.5 right-0.5 z-10 rounded px-1 py-0.5 bg-purple-100 dark:bg-purple-900/40 border border-purple-300 dark:border-purple-700 overflow-hidden"
+                            onClick={e => openMeeting(m, e)}
+                            onDoubleClick={e => e.stopPropagation()}
+                            className="absolute left-0.5 right-0.5 z-10 rounded px-1 py-0.5 bg-purple-100 dark:bg-purple-900/40 border border-purple-300 dark:border-purple-700 overflow-hidden cursor-pointer hover:brightness-95 transition-all"
                             style={{ top, height: ht }}
                             title={m.title}
                           >
@@ -600,7 +659,9 @@ export default function Agenda() {
                         {dayMeetings.slice(0, 2).map(m => (
                           <div
                             key={m.id}
-                            className="calendar-event text-xs bg-purple-100 dark:bg-purple-900/30 text-purple-800 dark:text-purple-300 px-1 py-0.5 rounded truncate"
+                            onClick={e => openMeeting(m, e)}
+                            onDoubleClick={e => e.stopPropagation()}
+                            className="calendar-event text-xs bg-purple-100 dark:bg-purple-900/30 text-purple-800 dark:text-purple-300 px-1 py-0.5 rounded truncate cursor-pointer hover:bg-purple-200 dark:hover:bg-purple-900/50 transition-colors"
                             title={m.title}
                           >
                             {m.start_time && (
@@ -612,7 +673,9 @@ export default function Agenda() {
                         {dayActions.slice(0, 2).map(a => (
                           <div
                             key={a.id}
-                            className="calendar-event text-xs bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 px-1 py-0.5 rounded flex items-center gap-0.5 truncate"
+                            onClick={e => openAction(a, e)}
+                            onDoubleClick={e => e.stopPropagation()}
+                            className="calendar-event text-xs bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 px-1 py-0.5 rounded flex items-center gap-0.5 truncate cursor-pointer hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-colors"
                             title={a.title}
                           >
                             <span className={cn('w-1.5 h-1.5 rounded-full shrink-0', priorityColor(a.priority))} />
@@ -643,7 +706,11 @@ export default function Agenda() {
                           <Users className="h-3 w-3" /> {t('agenda.meetings')}
                         </p>
                         {meetingsOn(selDay).map(m => (
-                          <div key={m.id} className="text-sm text-[var(--text-primary)] flex items-center gap-2">
+                          <div
+                            key={m.id}
+                            onClick={e => openMeeting(m, e)}
+                            className="text-sm text-[var(--text-primary)] flex items-center gap-2 py-0.5 px-1 rounded cursor-pointer hover:bg-[var(--bg-page)] transition-colors"
+                          >
                             {m.start_time && (
                               <span className="text-xs text-[var(--text-muted)] font-mono">{m.start_time.slice(0, 5)}</span>
                             )}
@@ -658,7 +725,11 @@ export default function Agenda() {
                           <CheckSquare className="h-3 w-3" /> {t('agenda.actions')}
                         </p>
                         {actionsOn(selDay).map(a => (
-                          <div key={a.id} className="text-sm text-[var(--text-primary)] flex items-center gap-2">
+                          <div
+                            key={a.id}
+                            onClick={e => openAction(a, e)}
+                            className="text-sm text-[var(--text-primary)] flex items-center gap-2 py-0.5 px-1 rounded cursor-pointer hover:bg-[var(--bg-page)] transition-colors"
+                          >
                             <span className={cn('w-2 h-2 rounded-full shrink-0', priorityColor(a.priority))} />
                             {a.title}
                           </div>
@@ -740,6 +811,148 @@ export default function Agenda() {
           )
         })()}
       </div>
+
+      {/* ── Event Detail Modal ──────────────────────────────────────────── */}
+      <Modal
+        open={evtOpen}
+        onClose={() => setEvtOpen(false)}
+        title={evtType === 'meeting' ? t('agenda.typeMeeting') : t('agenda.typeAction')}
+        size="md"
+        footer={
+          <div className="flex items-center gap-2 w-full">
+            {/* Left side: delete */}
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setEvtDeleteConfirm(true)}
+              className="text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
+              icon={<Trash2 className="h-4 w-4" />}
+            >
+              {t('common.delete')}
+            </Button>
+            <div className="flex-1" />
+            {/* Right side: mark done (actions only) + edit + close */}
+            {evtType === 'action' && evtAction && evtAction.status !== 'done' && (
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={handleEvtMarkDone}
+                loading={evtMarkingDone}
+                icon={<Check className="h-4 w-4" />}
+              >
+                {t('actions.markDone')}
+              </Button>
+            )}
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => {
+                setEvtOpen(false)
+                if (evtType === 'meeting' && evtMeeting) navigate(`/meetings?id=${evtMeeting.id}`)
+                else if (evtType === 'action' && evtAction) navigate(`/actions?id=${evtAction.id}`)
+              }}
+              icon={<Pencil className="h-4 w-4" />}
+            >
+              {t('common.edit')}
+            </Button>
+            <Button variant="ghost" size="sm" onClick={() => setEvtOpen(false)} icon={<X className="h-4 w-4" />}>
+              {t('common.close')}
+            </Button>
+          </div>
+        }
+      >
+        {evtType === 'meeting' && evtMeeting && (
+          <div className="space-y-3">
+            <h3 className="text-base font-semibold text-[var(--text-primary)]">{evtMeeting.title}</h3>
+            <div className="grid grid-cols-2 gap-3 text-sm">
+              <div className="flex items-center gap-2 text-[var(--text-secondary)]">
+                <Calendar className="h-4 w-4 shrink-0 text-[var(--text-muted)]" />
+                {formatDate(evtMeeting.date, 'EEE dd MMM yyyy', i18n.language)}
+              </div>
+              {(evtMeeting.start_time || evtMeeting.end_time) && (
+                <div className="flex items-center gap-2 text-[var(--text-secondary)]">
+                  <Clock className="h-4 w-4 shrink-0 text-[var(--text-muted)]" />
+                  {evtMeeting.start_time?.slice(0, 5)}
+                  {evtMeeting.end_time && ` – ${evtMeeting.end_time.slice(0, 5)}`}
+                </div>
+              )}
+              {evtMeeting.location && (
+                <div className="flex items-center gap-2 text-[var(--text-secondary)] col-span-2">
+                  <MapPin className="h-4 w-4 shrink-0 text-[var(--text-muted)]" />
+                  {evtMeeting.location}
+                </div>
+              )}
+              {evtMeeting.participants && (
+                <div className="flex items-center gap-2 text-[var(--text-secondary)] col-span-2">
+                  <Users className="h-4 w-4 shrink-0 text-[var(--text-muted)]" />
+                  {evtMeeting.participants}
+                </div>
+              )}
+            </div>
+            {evtMeeting.notes && (
+              <div className="bg-[var(--bg-page)] rounded-lg p-3 text-sm text-[var(--text-primary)] whitespace-pre-wrap max-h-40 overflow-y-auto">
+                {evtMeeting.notes}
+              </div>
+            )}
+          </div>
+        )}
+        {evtType === 'action' && evtAction && (
+          <div className="space-y-3">
+            <div className="flex items-start gap-3">
+              <div className={cn(
+                'mt-1 w-3 h-3 rounded-full shrink-0',
+                evtAction.priority === 'urgent' ? 'bg-red-500'
+                  : evtAction.priority === 'high' ? 'bg-orange-500'
+                  : evtAction.priority === 'medium' ? 'bg-yellow-400'
+                  : 'bg-green-500',
+              )} />
+              <h3 className={cn(
+                'text-base font-semibold text-[var(--text-primary)]',
+                evtAction.status === 'done' && 'line-through text-[var(--text-muted)]',
+              )}>
+                {evtAction.title}
+              </h3>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <span className={cn('text-xs px-2 py-0.5 rounded-full', priorityBgColor(evtAction.priority))}>
+                {t(`actions.priority.${evtAction.priority}`)}
+              </span>
+              <span className={cn('text-xs px-2 py-0.5 rounded-full', statusBgColor(evtAction.status))}>
+                {t(`actions.status.${evtAction.status}`)}
+              </span>
+            </div>
+            {evtAction.description && (
+              <p className="text-sm text-[var(--text-secondary)]">{evtAction.description}</p>
+            )}
+            <div className="grid grid-cols-2 gap-3 text-sm text-[var(--text-secondary)]">
+              {evtAction.start_date && (
+                <div className="flex items-center gap-2">
+                  <Calendar className="h-4 w-4 text-[var(--text-muted)]" />
+                  <span>{t('actions.startDate')}: {formatDate(evtAction.start_date, 'dd MMM yyyy', i18n.language)}</span>
+                </div>
+              )}
+              {evtAction.due_date && (
+                <div className="flex items-center gap-2">
+                  <Calendar className="h-4 w-4 text-[var(--text-muted)]" />
+                  <span>{t('actions.dueDate')}: {formatDate(evtAction.due_date, 'dd MMM yyyy', i18n.language)}</span>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+      </Modal>
+
+      {/* ── Delete Confirm Modal ─────────────────────────────────────────── */}
+      <ConfirmModal
+        open={evtDeleteConfirm}
+        onClose={() => setEvtDeleteConfirm(false)}
+        onConfirm={handleEvtDelete}
+        title={t('common.delete')}
+        message={t('common.deleteConfirm')}
+        confirmLabel={t('common.delete')}
+        cancelLabel={t('common.cancel')}
+        loading={evtDeleting}
+      />
 
       {/* ── Quick-Create Modal ───────────────────────────────────────────── */}
       <Modal
