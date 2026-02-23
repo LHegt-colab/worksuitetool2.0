@@ -130,6 +130,7 @@ const nl = {
     frequency: 'Frequentie',
     intervalEvery: 'Interval',
     recurEnd: 'Herhalen t/m',
+    recurEndHint: 'Leeg = 1 jaar vanaf startdatum',
     frequencies: {
       daily:   'Dagelijks',
       weekly:  'Wekelijks',

@@ -130,6 +130,7 @@ const en = {
     frequency: 'Frequency',
     intervalEvery: 'Interval',
     recurEnd: 'Repeat until',
+    recurEndHint: 'Empty = 1 year from start date',
     frequencies: {
       daily:   'Daily',
       weekly:  'Weekly',

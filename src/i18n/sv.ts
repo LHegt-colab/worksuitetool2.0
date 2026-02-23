@@ -130,6 +130,7 @@ const sv = {
     frequency: 'Frekvens',
     intervalEvery: 'Intervall',
     recurEnd: 'Upprepa till',
+    recurEndHint: 'Tom = 1 år från startdatum',
     frequencies: {
       daily:   'Dagligen',
       weekly:  'Veckovis',

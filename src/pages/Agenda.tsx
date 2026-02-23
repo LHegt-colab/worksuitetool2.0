@@ -233,8 +233,10 @@ export default function Agenda() {
           participants: null,
           notes:        null,
         }
-        if (qcRecurring && qcRecurEnd) {
-          const dates = generateRecurDates(qcDate, qcFrequency, qcInterval, qcRecurEnd)
+        if (qcRecurring) {
+          // If no end date given, default to 1 year from start date
+          const endDate = qcRecurEnd || format(addYears(parseISO(qcDate), 1), 'yyyy-MM-dd')
+          const dates = generateRecurDates(qcDate, qcFrequency, qcInterval, endDate)
           // Create all occurrences sequentially to avoid DB overload
           for (const date of dates) {
             await createMeeting({ ...meetingBase, date })
@@ -1061,7 +1063,7 @@ export default function Agenda() {
             <Button
               onClick={saveQC}
               loading={qcSaving}
-              disabled={!qcTitle.trim() || (qcType === 'meeting' && qcRecurring && !qcRecurEnd)}
+              disabled={!qcTitle.trim()}
             >
               {t('common.add')}
             </Button>
@@ -1103,10 +1105,7 @@ export default function Agenda() {
             onChange={e => setQcTitle(e.target.value)}
             autoFocus
             onKeyDown={e => {
-              if (e.key === 'Enter' && !qcSaving && qcTitle.trim()
-                && !(qcType === 'meeting' && qcRecurring && !qcRecurEnd)) {
-                saveQC()
-              }
+              if (e.key === 'Enter' && !qcSaving && qcTitle.trim()) saveQC()
             }}
             placeholder={qcType === 'meeting' ? 'Vergaderingtitel...' : 'Actietitel...'}
           />
@@ -1190,6 +1189,9 @@ export default function Agenda() {
                       onChange={e => setQcRecurEnd(e.target.value)}
                       min={qcDate}
                     />
+                    <p className="text-xs text-[var(--text-muted)] -mt-1">
+                      {t('agenda.recurEndHint')}
+                    </p>
                   </div>
                 )}
               </div>
