@@ -12,6 +12,8 @@ interface ModalProps {
   footer?: ReactNode
   size?: 'sm' | 'md' | 'lg' | 'xl' | 'full'
   className?: string
+  /** If false, clicking the backdrop does NOT close the modal (default: true) */
+  closeOnBackdrop?: boolean
 }
 
 const sizeClasses = {
@@ -22,7 +24,7 @@ const sizeClasses = {
   full: 'max-w-[95vw] h-[90vh]',
 }
 
-export default function Modal({ open, onClose, title, children, footer, size = 'md', className }: ModalProps) {
+export default function Modal({ open, onClose, title, children, footer, size = 'md', className, closeOnBackdrop = true }: ModalProps) {
   const overlayRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -45,7 +47,7 @@ export default function Modal({ open, onClose, title, children, footer, size = '
     <div
       ref={overlayRef}
       className="fixed inset-0 z-50 flex items-center justify-center p-4"
-      onClick={e => { if (e.target === overlayRef.current) onClose() }}
+      onClick={e => { if (closeOnBackdrop && e.target === overlayRef.current) onClose() }}
     >
       {/* Backdrop */}
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm animate-fade-in" />

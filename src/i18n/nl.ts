@@ -186,6 +186,7 @@ const nl = {
     notesPlaceholder: 'Vergaderagenda en aantekeningen...',
     locationPlaceholder: 'bijv. Vergaderzaal B, Teams-link',
     filterLabel: 'Filter op label',
+    allMeetings: 'Alle vergaderingen',
     meetingActions: 'Acties in vergadering',
     addMeetingAction: 'Actie toevoegen',
     actionTitlePlaceholder: 'Actietitel...',

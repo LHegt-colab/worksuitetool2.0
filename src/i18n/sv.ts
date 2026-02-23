@@ -180,6 +180,7 @@ const sv = {
     decisions: 'Beslut',
     linkedActions: 'Kopplade åtgärder',
     addDecision: 'Lägg till beslut',
+    allMeetings: 'Alla möten',
     noDecisions: 'Inga beslut tillagda',
     noLinkedActions: 'Inga kopplade åtgärder',
     participantsPlaceholder: 't.ex. Jan Svensson, Maria Larsson - eller e-postadresser',

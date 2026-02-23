@@ -180,6 +180,7 @@ const en = {
     decisions: 'Decisions',
     linkedActions: 'Linked actions',
     addDecision: 'Add decision',
+    allMeetings: 'All meetings',
     noDecisions: 'No decisions added',
     noLinkedActions: 'No linked actions',
     participantsPlaceholder: 'e.g. John Doe, Jane Smith - or email addresses',

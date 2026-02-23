@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useSearchParams } from 'react-router-dom'
+import { format, startOfWeek, endOfWeek } from 'date-fns'
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels'
 import { Plus, Search, Users, Calendar, Clock, MapPin, Pencil, Trash2, ChevronRight, X } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
@@ -31,6 +32,7 @@ export default function Meetings() {
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [tagFilter, setTagFilter] = useState('')
+  const [weekFilter, setWeekFilter] = useState<'week' | 'all'>('week')
   const [selected, setSelected] = useState<V2Meeting | null>(null)
   const [selectedDetail, setSelectedDetail] = useState<V2Meeting | null>(null)
   const [deleteModal, setDeleteModal] = useState<string | null>(null)
@@ -218,9 +220,14 @@ export default function Meetings() {
     }
   }
 
+  // Current ISO week boundaries (Monday–Sunday)
+  const thisWeekStart = format(startOfWeek(new Date(), { weekStartsOn: 1 }), 'yyyy-MM-dd')
+  const thisWeekEnd   = format(endOfWeek(new Date(),   { weekStartsOn: 1 }), 'yyyy-MM-dd')
+
   const filtered = meetings.filter(m => {
     if (search && !m.title.toLowerCase().includes(search.toLowerCase())) return false
     if (tagFilter && !m.tags?.some(tag => tag.id === tagFilter)) return false
+    if (weekFilter === 'week') return m.date >= thisWeekStart && m.date <= thisWeekEnd
     return true
   })
 
@@ -234,6 +241,32 @@ export default function Meetings() {
           <div className="h-full flex flex-col border-r border-[var(--border)]">
             {/* Header */}
             <div className="p-4 border-b border-[var(--border)] space-y-2 shrink-0">
+              {/* Week / All tabs */}
+              <div className="flex rounded-lg border border-[var(--border)] overflow-hidden text-xs font-medium">
+                <button
+                  onClick={() => setWeekFilter('week')}
+                  className={cn(
+                    'flex-1 py-1.5 px-2 transition-colors',
+                    weekFilter === 'week'
+                      ? 'bg-primary-500 text-white'
+                      : 'text-[var(--text-secondary)] hover:bg-[var(--bg-page)]',
+                  )}
+                >
+                  {t('common.thisWeek')}
+                </button>
+                <button
+                  onClick={() => setWeekFilter('all')}
+                  className={cn(
+                    'flex-1 py-1.5 px-2 transition-colors',
+                    weekFilter === 'all'
+                      ? 'bg-primary-500 text-white'
+                      : 'text-[var(--text-secondary)] hover:bg-[var(--bg-page)]',
+                  )}
+                >
+                  {t('meetings.allMeetings')}
+                </button>
+              </div>
+
               <div className="flex items-center gap-2">
                 <Input
                   value={search}

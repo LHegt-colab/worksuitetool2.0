@@ -395,7 +395,7 @@ export default function Agenda() {
               )}>
                 {format(current, 'EEEE d MMMM', { locale })}
               </div>
-              <div className="flex flex-wrap gap-1 min-w-0">
+              <div className="flex flex-wrap gap-1 min-w-0 max-h-24 overflow-y-auto">
                 {actionsOn(current).map(a => (
                   <div
                     key={a.id}
@@ -403,7 +403,7 @@ export default function Agenda() {
                     className="flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 cursor-pointer hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-colors"
                   >
                     <span className={cn('w-1.5 h-1.5 rounded-full shrink-0', priorityColor(a.priority))} />
-                    <span className="truncate max-w-32">{a.title}</span>
+                    <span className="truncate max-w-48">{a.title}</span>
                     <TagDots tags={a.tags} max={3} dotSize={10} />
                   </div>
                 ))}
@@ -547,8 +547,8 @@ export default function Agenda() {
                       </div>
                     </div>
                     {dayActions.length > 0 && (
-                      <div className="mt-0.5 space-y-0.5 px-0.5">
-                        {dayActions.slice(0, 2).map(a => (
+                      <div className="mt-0.5 space-y-0.5 px-0.5 max-h-24 overflow-y-auto">
+                        {dayActions.map(a => (
                           <div
                             key={a.id}
                             onClick={e => openAction(a, e)}
@@ -559,9 +559,6 @@ export default function Agenda() {
                             <TagDots tags={a.tags} max={2} dotSize={9} />
                           </div>
                         ))}
-                        {dayActions.length > 2 && (
-                          <div className="text-xs text-[var(--text-muted)] pl-1">+{dayActions.length - 2}</div>
-                        )}
                       </div>
                     )}
                   </div>
@@ -1055,6 +1052,7 @@ export default function Agenda() {
         onClose={() => setQcOpen(false)}
         title={t('agenda.newItem')}
         size="sm"
+        closeOnBackdrop={false}
         footer={
           <>
             <Button variant="secondary" onClick={() => setQcOpen(false)}>
