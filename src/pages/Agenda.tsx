@@ -121,7 +121,10 @@ export default function Agenda() {
   useEffect(() => { load() }, [load])
 
   // ── Auto-scroll to current time when entering day/week view ──────────────
+  // Also fires after initial load (loading: true→false) so the scroll
+  // container actually exists when we try to set scrollTop.
   useEffect(() => {
+    if (loading) return
     if ((view === 'day' || view === 'week') && scrollRef.current) {
       const now = new Date()
       const topPx = minToTop(now.getHours() * 60 + now.getMinutes()) - 160
@@ -129,7 +132,7 @@ export default function Agenda() {
         if (scrollRef.current) scrollRef.current.scrollTop = Math.max(0, topPx)
       }, 60)
     }
-  }, [view])
+  }, [view, loading])
 
   // ── Navigation ────────────────────────────────────────────────────────────
   function prev() {
