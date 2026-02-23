@@ -17,7 +17,7 @@ import {
   getMeetings, getMeeting, createMeeting, updateMeeting, deleteMeeting,
   createDecision, deleteDecision, type CreateMeetingInput
 } from '@/features/meetings/api'
-import { getTags } from '@/features/tags/api'
+import { getTags, setMeetingTags } from '@/features/tags/api'
 import { getActions, createAction } from '@/features/actions/api'
 import type { V2Meeting, V2Action, V2Tag, V2Decision } from '@/types/database.types'
 import { cn, formatDate } from '@/lib/utils'
@@ -38,6 +38,10 @@ export default function Meetings() {
   const [deleteModal, setDeleteModal] = useState<string | null>(null)
   const [deleting, setDeleting] = useState(false)
   const [saving, setSaving] = useState(false)
+  // Series label propagation
+  const [seriesConfirm, setSeriesConfirm]   = useState(false)
+  const [seriesSiblings, setSeriesSiblings] = useState<{ ids: string[]; tagIds: string[] } | null>(null)
+  const [applyingSeries, setApplyingSeries] = useState(false)
   const [newDecisionTitle, setNewDecisionTitle] = useState('')
   const [addingDecision, setAddingDecision] = useState(false)
   const [newActionTitle, setNewActionTitle] = useState('')
@@ -133,6 +137,18 @@ export default function Meetings() {
           notes: form.notes || null,
         })
         meetingId = updated.id
+
+        // Detect recurring-series siblings: same title + same start_time
+        const normTime = form.start_time ? form.start_time.slice(0, 5) : null
+        const siblings = meetings.filter(m =>
+          m.id !== selected.id &&
+          m.title === form.title &&
+          (m.start_time ? m.start_time.slice(0, 5) : null) === normTime
+        )
+        if (siblings.length > 0) {
+          setSeriesSiblings({ ids: siblings.map(s => s.id), tagIds: form.tag_ids })
+          setSeriesConfirm(true)
+        }
       } else {
         const created = await createMeeting({
           user_id: user.id,
@@ -217,6 +233,21 @@ export default function Meetings() {
       setNewActionTitle('')
     } finally {
       setAddingAction(false)
+    }
+  }
+
+  async function handleSeriesApply() {
+    if (!seriesSiblings) return
+    setApplyingSeries(true)
+    try {
+      for (const id of seriesSiblings.ids) {
+        await setMeetingTags(id, seriesSiblings.tagIds)
+      }
+      setSeriesConfirm(false)
+      setSeriesSiblings(null)
+      load()
+    } finally {
+      setApplyingSeries(false)
     }
   }
 
@@ -695,6 +726,29 @@ export default function Meetings() {
           </div>
         </Panel>
       </PanelGroup>
+
+      {/* ── Apply labels to recurring series ────────────────────────── */}
+      <Modal
+        open={seriesConfirm}
+        onClose={() => { setSeriesConfirm(false); setSeriesSiblings(null) }}
+        title="Labels toepassen op reeks"
+        size="sm"
+        footer={
+          <>
+            <Button variant="secondary" onClick={() => { setSeriesConfirm(false); setSeriesSiblings(null) }}>
+              Alleen deze
+            </Button>
+            <Button onClick={handleSeriesApply} loading={applyingSeries}>
+              Toepassen op alle {seriesSiblings?.ids.length ?? 0}
+            </Button>
+          </>
+        }
+      >
+        <p className="text-[var(--text-secondary)]">
+          Er zijn <strong>{seriesSiblings?.ids.length ?? 0}</strong> andere afspraken gevonden met
+          dezelfde naam en begintijd. Wil je de labels ook op al deze afspraken toepassen?
+        </p>
+      </Modal>
 
       <ConfirmModal
         open={!!deleteModal}
