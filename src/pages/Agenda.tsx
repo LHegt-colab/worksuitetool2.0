@@ -162,10 +162,22 @@ export default function Agenda() {
   }
   function actionsOn(date: Date): V2Action[] {
     const ds = format(date, 'yyyy-MM-dd')
-    return actions.filter(a =>
-      (a.start_date === ds || a.due_date === ds) &&
-      a.status !== 'done' && a.status !== 'cancelled',
-    )
+    const isToday = ds === todayStr
+    return actions.filter(a => {
+      if (a.status === 'done' || a.status === 'cancelled') return false
+      // Always show on the due_date itself (upcoming, current day, or overdue)
+      if (a.due_date && a.due_date === ds) return true
+      // Show on TODAY if today falls within [start_date, due_date] window
+      if (isToday) {
+        if (!a.start_date && !a.due_date) return false
+        const afterStart = !a.start_date || a.start_date <= todayStr
+        const beforeDue  = !a.due_date   || todayStr <= a.due_date
+        return afterStart && beforeDue
+      }
+      // Fallback: action without due_date → show on start_date only
+      if (!a.due_date && a.start_date === ds) return true
+      return false
+    })
   }
 
   // ── Quick-create ──────────────────────────────────────────────────────────

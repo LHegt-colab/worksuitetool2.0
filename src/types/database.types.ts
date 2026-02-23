@@ -105,6 +105,18 @@ export interface V2Settings {
   updated_at: string
 }
 
+export interface V2WorkLog {
+  id: string
+  user_id: string
+  log_date: string
+  start_time: string | null
+  end_time: string | null
+  break_minutes: number
+  notes: string | null
+  created_at: string
+  updated_at: string
+}
+
 export type CalendarItemType = string
 
 export interface CalendarItem {
@@ -201,6 +213,12 @@ export interface Database {
         Row: { id: string; user_id: string; language: string; theme: string; week_start_day: number; created_at: string; updated_at: string }
         Insert: { id?: string; user_id: string; language?: string; theme?: string; week_start_day?: number; created_at?: string; updated_at?: string }
         Update: { id?: string; user_id?: string; language?: string; theme?: string; week_start_day?: number; created_at?: string; updated_at?: string }
+        Relationships: Rel[]
+      }
+      v2_work_logs: {
+        Row: { id: string; user_id: string; log_date: string; start_time: string | null; end_time: string | null; break_minutes: number; notes: string | null; created_at: string; updated_at: string }
+        Insert: { id?: string; user_id: string; log_date: string; start_time?: string | null; end_time?: string | null; break_minutes?: number; notes?: string | null; created_at?: string; updated_at?: string }
+        Update: { id?: string; user_id?: string; log_date?: string; start_time?: string | null; end_time?: string | null; break_minutes?: number; notes?: string | null; created_at?: string; updated_at?: string }
         Relationships: Rel[]
       }
     }

@@ -14,6 +14,9 @@ const pageTitles: Record<string, string> = {
   '/knowledge': 'nav.knowledge',
   '/html-preview': 'nav.htmlPreview',
   '/csv-converter': 'nav.csvConverter',
+  '/calculator': 'nav.calculator',
+  '/time-tracking': 'nav.timeTracking',
+  '/data-management': 'nav.dataManagement',
   '/settings': 'nav.settings',
 }
 

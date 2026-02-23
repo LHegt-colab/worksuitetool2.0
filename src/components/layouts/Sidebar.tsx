@@ -5,7 +5,7 @@ import {
   LayoutDashboard, Calendar, CheckSquare, Users, BookOpen,
   Library, Code2, FileSpreadsheet, Settings, LogOut,
   ChevronLeft, ChevronRight, Globe, Sun, Moon, Monitor,
-  BriefcaseBusiness
+  BriefcaseBusiness, Calculator, Clock, Database,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useAuth } from '@/contexts/AuthContext'
@@ -27,8 +27,11 @@ const navItems = [
 ]
 
 const toolItems = [
-  { to: '/html-preview', icon: Code2, key: 'nav.htmlPreview' as const },
-  { to: '/csv-converter', icon: FileSpreadsheet, key: 'nav.csvConverter' as const },
+  { to: '/html-preview',    icon: Code2,          key: 'nav.htmlPreview'    as const },
+  { to: '/csv-converter',   icon: FileSpreadsheet, key: 'nav.csvConverter'   as const },
+  { to: '/calculator',      icon: Calculator,      key: 'nav.calculator'     as const },
+  { to: '/time-tracking',   icon: Clock,           key: 'nav.timeTracking'   as const },
+  { to: '/data-management', icon: Database,        key: 'nav.dataManagement' as const },
 ]
 
 export default function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {

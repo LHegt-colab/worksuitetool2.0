@@ -14,6 +14,9 @@ import Knowledge from '@/pages/Knowledge'
 import Settings from '@/pages/Settings'
 import HtmlPreview from '@/pages/HtmlPreview'
 import CsvConverter from '@/pages/CsvConverter'
+import Calculator from '@/pages/Calculator'
+import TimeTracking from '@/pages/TimeTracking'
+import DataManagement from '@/pages/DataManagement'
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth()
@@ -42,6 +45,9 @@ export default function App() {
         <Route path="knowledge" element={<Knowledge />} />
         <Route path="html-preview" element={<HtmlPreview />} />
         <Route path="csv-converter" element={<CsvConverter />} />
+        <Route path="calculator" element={<Calculator />} />
+        <Route path="time-tracking" element={<TimeTracking />} />
+        <Route path="data-management" element={<DataManagement />} />
         <Route path="settings" element={<Settings />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
