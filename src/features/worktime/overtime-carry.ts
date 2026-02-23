@@ -10,7 +10,7 @@ export async function getOvertimeCarryOver(year: number): Promise<V2OvertimeCarr
     .maybeSingle()
 
   if (error) throw error
-  return data
+  return data as V2OvertimeCarryOver | null
 }
 
 /** Upsert (create or update) the carry-over for a given year. */
@@ -32,5 +32,5 @@ export async function upsertOvertimeCarryOver(
     .single()
 
   if (error) throw error
-  return data
+  return data as V2OvertimeCarryOver
 }

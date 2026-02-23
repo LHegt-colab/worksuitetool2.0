@@ -12,7 +12,7 @@ export async function getLeaveBalance(year: number): Promise<V2LeaveBalance | nu
     .maybeSingle()
 
   if (error) throw error
-  return data
+  return data as V2LeaveBalance | null
 }
 
 /** Upsert the leave balance for a given year. */
@@ -45,7 +45,7 @@ export async function upsertLeaveBalance(
     .single()
 
   if (error) throw error
-  return data
+  return data as V2LeaveBalance
 }
 
 // ─── Leave Entries ────────────────────────────────────────────────────────────
@@ -83,7 +83,7 @@ export async function createLeaveEntry(input: {
     .single()
 
   if (error) throw error
-  return data
+  return data as V2LeaveEntry
 }
 
 /** Update an existing leave entry. */
@@ -103,7 +103,7 @@ export async function updateLeaveEntry(
     .single()
 
   if (error) throw error
-  return data
+  return data as V2LeaveEntry
 }
 
 /** Delete a leave entry. */
