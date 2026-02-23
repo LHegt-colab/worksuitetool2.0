@@ -6,7 +6,7 @@ import {
   eachDayOfInterval, getISODay, parseISO,
 } from 'date-fns'
 import { nl, enUS, sv } from 'date-fns/locale'
-import { ChevronLeft, ChevronRight, Printer, CheckCircle2, Clock } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Printer, CheckCircle2, Clock, Save } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { PageSpinner } from '@/components/ui/Spinner'
 import { cn } from '@/lib/utils'
@@ -15,6 +15,7 @@ import {
   computeWorkedMinutes, normMinutes, formatMinutes,
   type V2WorkLog,
 } from '@/features/worktime/api'
+import { getOvertimeCarryOver, upsertOvertimeCarryOver } from '@/features/worktime/overtime-carry'
 
 type ViewTab = 'week' | 'year'
 
@@ -78,6 +79,12 @@ export default function TimeTracking() {
   /* allLogs for year view */
   const [yearLogs, setYearLogs] = useState<V2WorkLog[]>([])
 
+  /* overtime carry-over */
+  const [carryOverMinutes, setCarryOverMinutes] = useState(0)
+  const [carryOverInput,   setCarryOverInput]   = useState('')    // decimal hours string
+  const [savingCarryOver,  setSavingCarryOver]  = useState(false)
+  const [savedCarryOver,   setSavedCarryOver]   = useState(false)
+
   // ── Current week days (Mon–Fri) ──────────────────────────────────────────
   const weekStart = startOfWeek(weekRef, { weekStartsOn: 1 })
   const weekEnd   = endOfWeek(weekRef,   { weekStartsOn: 1 })
@@ -112,10 +119,17 @@ export default function TimeTracking() {
     if (!user) return
     setLoading(true)
     try {
+      const year = parseInt(format(yearRef, 'yyyy'))
       const from = format(startOfYear(yearRef), 'yyyy-MM-dd')
       const to   = format(endOfYear(yearRef),   'yyyy-MM-dd')
-      const logs = await getWorkLogs(user.id, from, to)
+      const [logs, carryOver] = await Promise.all([
+        getWorkLogs(user.id, from, to),
+        getOvertimeCarryOver(year),
+      ])
       setYearLogs(logs)
+      const mins = carryOver?.minutes ?? 0
+      setCarryOverMinutes(mins)
+      setCarryOverInput(mins === 0 ? '' : String((mins / 60).toFixed(2)).replace(/\.?0+$/, ''))
     } catch (err) {
       console.error(err)
     } finally {
@@ -124,6 +138,23 @@ export default function TimeTracking() {
   }, [user, yearRef])
 
   useEffect(() => { if (tab === 'year') loadYear() }, [loadYear, tab])
+
+  // ── Save carry-over ──────────────────────────────────────────────────────
+  async function saveCarryOver() {
+    setSavingCarryOver(true)
+    try {
+      const hours   = parseFloat(carryOverInput || '0')
+      const minutes = isNaN(hours) ? 0 : Math.round(hours * 60)
+      await upsertOvertimeCarryOver(parseInt(format(yearRef, 'yyyy')), minutes)
+      setCarryOverMinutes(minutes)
+      setSavedCarryOver(true)
+      setTimeout(() => setSavedCarryOver(false), 2000)
+    } catch (err) {
+      console.error(err)
+    } finally {
+      setSavingCarryOver(false)
+    }
+  }
 
   // ── Auto-save debounce ───────────────────────────────────────────────────
   const saveTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({})
@@ -223,9 +254,9 @@ export default function TimeTracking() {
     })
   })()
 
-  // Cumulative balance per week
+  // Cumulative balance per week (carry-over minutes added as starting point)
   const cumulativeByWeek = yearByWeek.map((_, i) => {
-    return yearByWeek.slice(0, i + 1).reduce((s, w) => s + (w.delta ?? 0), 0)
+    return carryOverMinutes + yearByWeek.slice(0, i + 1).reduce((s, w) => s + (w.delta ?? 0), 0)
   })
 
   const totalWorked = yearByWeek.reduce((s, w) => s + w.totalWorked, 0)
@@ -466,6 +497,51 @@ export default function TimeTracking() {
               >
                 {t('common.today')}
               </button>
+            </div>
+
+            {/* Carry-over input card */}
+            <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-xl p-4 shadow-sm mb-4">
+              <p className="text-sm font-semibold text-[var(--text-primary)] mb-1">{t('timeTracking.carryOver')}</p>
+              <p className="text-xs text-[var(--text-muted)] mb-3">{t('timeTracking.carryOverHint')}</p>
+              <div className="flex items-center gap-2 flex-wrap">
+                <div className="flex items-center gap-1.5">
+                  <input
+                    type="number"
+                    step="0.25"
+                    placeholder="0"
+                    value={carryOverInput}
+                    onChange={e => setCarryOverInput(e.target.value)}
+                    onKeyDown={e => { if (e.key === 'Enter') saveCarryOver() }}
+                    className="w-28 text-sm px-2 py-1.5 rounded-lg border border-[var(--border)] bg-[var(--bg-page)] text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-primary-500/40 font-mono"
+                  />
+                  <span className="text-sm text-[var(--text-muted)]">{t('timeTracking.hours')}</span>
+                </div>
+                {carryOverInput && !isNaN(parseFloat(carryOverInput)) && (
+                  <span className="text-xs text-[var(--text-secondary)] font-mono bg-[var(--bg-page)] border border-[var(--border)] rounded px-2 py-1">
+                    = {(() => { const m = Math.round(parseFloat(carryOverInput) * 60); return (m >= 0 ? '+' : '') + formatMinutes(m) })()}
+                  </span>
+                )}
+                <button
+                  onClick={saveCarryOver}
+                  disabled={savingCarryOver}
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-primary-500 hover:bg-primary-600 text-white transition-colors disabled:opacity-50"
+                >
+                  {savingCarryOver
+                    ? <Clock className="h-3.5 w-3.5 animate-pulse" />
+                    : savedCarryOver
+                    ? <CheckCircle2 className="h-3.5 w-3.5" />
+                    : <Save className="h-3.5 w-3.5" />
+                  }
+                  {savedCarryOver ? t('common.saved') : t('common.save')}
+                </button>
+                {carryOverMinutes !== 0 && (
+                  <span className="text-xs text-[var(--text-muted)]">
+                    {t('timeTracking.carryOverCurrent')}: <span className={cn('font-mono font-semibold', carryOverMinutes >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-500')}>
+                      {(carryOverMinutes >= 0 ? '+' : '') + formatMinutes(carryOverMinutes)}
+                    </span>
+                  </span>
+                )}
+              </div>
             </div>
 
             {/* Summary cards */}

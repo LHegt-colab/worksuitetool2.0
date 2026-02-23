@@ -16,6 +16,7 @@ import HtmlPreview from '@/pages/HtmlPreview'
 import CsvConverter from '@/pages/CsvConverter'
 import Calculator from '@/pages/Calculator'
 import TimeTracking from '@/pages/TimeTracking'
+import Vacation from '@/pages/Vacation'
 import DataManagement from '@/pages/DataManagement'
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
@@ -47,6 +48,7 @@ export default function App() {
         <Route path="csv-converter" element={<CsvConverter />} />
         <Route path="calculator" element={<Calculator />} />
         <Route path="time-tracking" element={<TimeTracking />} />
+        <Route path="vacation" element={<Vacation />} />
         <Route path="data-management" element={<DataManagement />} />
         <Route path="settings" element={<Settings />} />
       </Route>

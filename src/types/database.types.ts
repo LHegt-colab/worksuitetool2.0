@@ -117,6 +117,40 @@ export interface V2WorkLog {
   updated_at: string
 }
 
+export interface V2OvertimeCarryOver {
+  id: string
+  user_id: string
+  year: number
+  minutes: number
+  notes: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface V2LeaveBalance {
+  id: string
+  user_id: string
+  year: number
+  base_days: number
+  purchased_days: number
+  carry_over_hours: number
+  manual_adjustment_hours: number
+  hours_per_day: number
+  notes: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface V2LeaveEntry {
+  id: string
+  user_id: string
+  entry_date: string
+  hours: number
+  description: string | null
+  created_at: string
+  updated_at: string
+}
+
 export type CalendarItemType = string
 
 export interface CalendarItem {
@@ -219,6 +253,24 @@ export interface Database {
         Row: { id: string; user_id: string; log_date: string; start_time: string | null; end_time: string | null; break_minutes: number; notes: string | null; created_at: string; updated_at: string }
         Insert: { id?: string; user_id: string; log_date: string; start_time?: string | null; end_time?: string | null; break_minutes?: number; notes?: string | null; created_at?: string; updated_at?: string }
         Update: { id?: string; user_id?: string; log_date?: string; start_time?: string | null; end_time?: string | null; break_minutes?: number; notes?: string | null; created_at?: string; updated_at?: string }
+        Relationships: Rel[]
+      }
+      v2_overtime_carry_over: {
+        Row: { id: string; user_id: string; year: number; minutes: number; notes: string | null; created_at: string; updated_at: string }
+        Insert: { id?: string; user_id: string; year: number; minutes?: number; notes?: string | null; created_at?: string; updated_at?: string }
+        Update: { id?: string; user_id?: string; year?: number; minutes?: number; notes?: string | null; created_at?: string; updated_at?: string }
+        Relationships: Rel[]
+      }
+      v2_leave_balances: {
+        Row: { id: string; user_id: string; year: number; base_days: number; purchased_days: number; carry_over_hours: number; manual_adjustment_hours: number; hours_per_day: number; notes: string | null; created_at: string; updated_at: string }
+        Insert: { id?: string; user_id: string; year: number; base_days?: number; purchased_days?: number; carry_over_hours?: number; manual_adjustment_hours?: number; hours_per_day?: number; notes?: string | null; created_at?: string; updated_at?: string }
+        Update: { id?: string; user_id?: string; year?: number; base_days?: number; purchased_days?: number; carry_over_hours?: number; manual_adjustment_hours?: number; hours_per_day?: number; notes?: string | null; created_at?: string; updated_at?: string }
+        Relationships: Rel[]
+      }
+      v2_leave_entries: {
+        Row: { id: string; user_id: string; entry_date: string; hours: number; description: string | null; created_at: string; updated_at: string }
+        Insert: { id?: string; user_id: string; entry_date: string; hours?: number; description?: string | null; created_at?: string; updated_at?: string }
+        Update: { id?: string; user_id?: string; entry_date?: string; hours?: number; description?: string | null; created_at?: string; updated_at?: string }
         Relationships: Rel[]
       }
     }

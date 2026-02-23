@@ -5,7 +5,7 @@ import {
   LayoutDashboard, Calendar, CheckSquare, Users, BookOpen,
   Library, Code2, FileSpreadsheet, Settings, LogOut,
   ChevronLeft, ChevronRight, Globe, Sun, Moon, Monitor,
-  BriefcaseBusiness, Calculator, Clock, Database,
+  BriefcaseBusiness, Calculator, Clock, Database, Umbrella,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useAuth } from '@/contexts/AuthContext'
@@ -31,6 +31,7 @@ const toolItems = [
   { to: '/csv-converter',   icon: FileSpreadsheet, key: 'nav.csvConverter'   as const },
   { to: '/calculator',      icon: Calculator,      key: 'nav.calculator'     as const },
   { to: '/time-tracking',   icon: Clock,           key: 'nav.timeTracking'   as const },
+  { to: '/vacation',        icon: Umbrella,        key: 'nav.vacation'       as const },
   { to: '/data-management', icon: Database,        key: 'nav.dataManagement' as const },
 ]
 
