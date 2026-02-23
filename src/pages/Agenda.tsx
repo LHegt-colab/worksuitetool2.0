@@ -15,6 +15,7 @@ import { PageSpinner } from '@/components/ui/Spinner'
 import Input from '@/components/ui/Input'
 import Select from '@/components/ui/Select'
 import Modal, { ConfirmModal } from '@/components/ui/Modal'
+import { TagBadge } from '@/components/ui/Badge'
 import { getMeetings, createMeeting, deleteMeeting } from '@/features/meetings/api'
 import { getActions, createAction, deleteAction, markActionDone } from '@/features/actions/api'
 import type { V2Meeting, V2Action } from '@/types/database.types'
@@ -41,6 +42,27 @@ function priorityColor(p: string): string {
     case 'medium': return 'bg-yellow-400'
     default:       return 'bg-green-500'
   }
+}
+
+/** Small colored dots showing the tag colors on a calendar event pill */
+function TagDots({ tags, max = 3, dotSize = 7 }: {
+  tags?: Array<{ id: string; name: string; color: string }>
+  max?: number
+  dotSize?: number
+}) {
+  if (!tags || tags.length === 0) return null
+  return (
+    <span className="flex gap-0.5 shrink-0">
+      {tags.slice(0, max).map(tag => (
+        <span
+          key={tag.id}
+          className="rounded-full shrink-0"
+          style={{ backgroundColor: tag.color, width: dotSize, height: dotSize }}
+          title={tag.name}
+        />
+      ))}
+    </span>
+  )
 }
 
 export default function Agenda() {
@@ -331,6 +353,7 @@ export default function Agenda() {
                   >
                     <span className={cn('w-1.5 h-1.5 rounded-full shrink-0', priorityColor(a.priority))} />
                     <span className="truncate max-w-32">{a.title}</span>
+                    <TagDots tags={a.tags} max={3} dotSize={6} />
                   </div>
                 ))}
               </div>
@@ -422,9 +445,12 @@ export default function Agenda() {
                         style={{ top, height: ht }}
                         title={m.title}
                       >
-                        <p className="text-xs font-semibold text-purple-800 dark:text-purple-200 leading-tight truncate">
-                          {m.title}
-                        </p>
+                        <div className="flex items-start gap-1">
+                          <p className="text-xs font-semibold text-purple-800 dark:text-purple-200 leading-tight truncate flex-1">
+                            {m.title}
+                          </p>
+                          <TagDots tags={m.tags} max={3} dotSize={7} />
+                        </div>
                         {ht > SLOT_H && m.location && (
                           <p className="text-xs text-purple-600 dark:text-purple-400 truncate">{m.location}</p>
                         )}
@@ -475,10 +501,11 @@ export default function Agenda() {
                           <div
                             key={a.id}
                             onClick={e => openAction(a, e)}
-                            className="text-xs flex items-center gap-0.5 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 rounded px-1 py-0.5 truncate cursor-pointer hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-colors"
+                            className="text-xs flex items-center gap-0.5 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 rounded px-1 py-0.5 overflow-hidden cursor-pointer hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-colors"
                           >
                             <span className={cn('w-1.5 h-1.5 rounded-full shrink-0', priorityColor(a.priority))} />
-                            <span className="truncate">{a.title}</span>
+                            <span className="truncate flex-1">{a.title}</span>
+                            <TagDots tags={a.tags} max={2} dotSize={5} />
                           </div>
                         ))}
                         {dayActions.length > 2 && (
@@ -584,9 +611,12 @@ export default function Agenda() {
                             style={{ top, height: ht }}
                             title={m.title}
                           >
-                            <p className="text-xs font-medium text-purple-800 dark:text-purple-200 leading-tight truncate">
-                              {m.title}
-                            </p>
+                            <div className="flex items-start gap-1">
+                              <p className="text-xs font-medium text-purple-800 dark:text-purple-200 leading-tight truncate flex-1">
+                                {m.title}
+                              </p>
+                              <TagDots tags={m.tags} max={2} dotSize={6} />
+                            </div>
                             {ht > SLOT_H && (
                               <p className="text-xs text-purple-500 dark:text-purple-400">
                                 {m.start_time.slice(0, 5)}{m.end_time && `–${m.end_time.slice(0, 5)}`}
@@ -661,13 +691,14 @@ export default function Agenda() {
                             key={m.id}
                             onClick={e => openMeeting(m, e)}
                             onDoubleClick={e => e.stopPropagation()}
-                            className="calendar-event text-xs bg-purple-100 dark:bg-purple-900/30 text-purple-800 dark:text-purple-300 px-1 py-0.5 rounded truncate cursor-pointer hover:bg-purple-200 dark:hover:bg-purple-900/50 transition-colors"
+                            className="calendar-event text-xs bg-purple-100 dark:bg-purple-900/30 text-purple-800 dark:text-purple-300 px-1 py-0.5 rounded flex items-center gap-0.5 overflow-hidden cursor-pointer hover:bg-purple-200 dark:hover:bg-purple-900/50 transition-colors"
                             title={m.title}
                           >
                             {m.start_time && (
-                              <span className="font-medium mr-0.5">{m.start_time.slice(0, 5)}</span>
+                              <span className="font-medium shrink-0">{m.start_time.slice(0, 5)}</span>
                             )}
-                            {m.title}
+                            <span className="truncate flex-1">{m.title}</span>
+                            <TagDots tags={m.tags} max={2} dotSize={5} />
                           </div>
                         ))}
                         {dayActions.slice(0, 2).map(a => (
@@ -675,11 +706,12 @@ export default function Agenda() {
                             key={a.id}
                             onClick={e => openAction(a, e)}
                             onDoubleClick={e => e.stopPropagation()}
-                            className="calendar-event text-xs bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 px-1 py-0.5 rounded flex items-center gap-0.5 truncate cursor-pointer hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-colors"
+                            className="calendar-event text-xs bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 px-1 py-0.5 rounded flex items-center gap-0.5 overflow-hidden cursor-pointer hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-colors"
                             title={a.title}
                           >
                             <span className={cn('w-1.5 h-1.5 rounded-full shrink-0', priorityColor(a.priority))} />
-                            <span className="truncate">{a.title}</span>
+                            <span className="truncate flex-1">{a.title}</span>
+                            <TagDots tags={a.tags} max={2} dotSize={5} />
                           </div>
                         ))}
                         {(dayMeetings.length + dayActions.length) > 4 && (
@@ -712,9 +744,10 @@ export default function Agenda() {
                             className="text-sm text-[var(--text-primary)] flex items-center gap-2 py-0.5 px-1 rounded cursor-pointer hover:bg-[var(--bg-page)] transition-colors"
                           >
                             {m.start_time && (
-                              <span className="text-xs text-[var(--text-muted)] font-mono">{m.start_time.slice(0, 5)}</span>
+                              <span className="text-xs text-[var(--text-muted)] font-mono shrink-0">{m.start_time.slice(0, 5)}</span>
                             )}
-                            {m.title}
+                            <span className="truncate flex-1">{m.title}</span>
+                            <TagDots tags={m.tags} max={3} dotSize={8} />
                           </div>
                         ))}
                       </div>
@@ -731,7 +764,8 @@ export default function Agenda() {
                             className="text-sm text-[var(--text-primary)] flex items-center gap-2 py-0.5 px-1 rounded cursor-pointer hover:bg-[var(--bg-page)] transition-colors"
                           >
                             <span className={cn('w-2 h-2 rounded-full shrink-0', priorityColor(a.priority))} />
-                            {a.title}
+                            <span className="truncate flex-1">{a.title}</span>
+                            <TagDots tags={a.tags} max={3} dotSize={8} />
                           </div>
                         ))}
                       </div>
@@ -894,6 +928,13 @@ export default function Agenda() {
                 {evtMeeting.notes}
               </div>
             )}
+            {evtMeeting.tags && evtMeeting.tags.length > 0 && (
+              <div className="flex flex-wrap gap-1.5">
+                {evtMeeting.tags.map(tag => (
+                  <TagBadge key={tag.id} name={tag.name} color={tag.color} size="sm" />
+                ))}
+              </div>
+            )}
           </div>
         )}
         {evtType === 'action' && evtAction && (
@@ -920,6 +961,9 @@ export default function Agenda() {
               <span className={cn('text-xs px-2 py-0.5 rounded-full', statusBgColor(evtAction.status))}>
                 {t(`actions.status.${evtAction.status}`)}
               </span>
+              {evtAction.tags?.map(tag => (
+                <TagBadge key={tag.id} name={tag.name} color={tag.color} size="sm" />
+              ))}
             </div>
             {evtAction.description && (
               <p className="text-sm text-[var(--text-secondary)]">{evtAction.description}</p>
