@@ -125,6 +125,17 @@ const nl = {
     newItem: 'Nieuw item aanmaken',
     typeMeeting: 'Vergadering',
     typeAction: 'Actie',
+    endTime: 'Eindtijd',
+    recurring: 'Terugkerend',
+    frequency: 'Frequentie',
+    intervalEvery: 'Interval',
+    recurEnd: 'Herhalen t/m',
+    frequencies: {
+      daily:   'Dagelijks',
+      weekly:  'Wekelijks',
+      monthly: 'Maandelijks',
+      yearly:  'Jaarlijks',
+    },
   },
   actions: {
     title: 'Acties',

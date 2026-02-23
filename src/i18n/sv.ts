@@ -125,6 +125,17 @@ const sv = {
     newItem: 'Skapa nytt objekt',
     typeMeeting: 'Möte',
     typeAction: 'Åtgärd',
+    endTime: 'Sluttid',
+    recurring: 'Återkommande',
+    frequency: 'Frekvens',
+    intervalEvery: 'Intervall',
+    recurEnd: 'Upprepa till',
+    frequencies: {
+      daily:   'Dagligen',
+      weekly:  'Veckovis',
+      monthly: 'Månadsvis',
+      yearly:  'Årsvis',
+    },
   },
   actions: {
     title: 'Åtgärder',

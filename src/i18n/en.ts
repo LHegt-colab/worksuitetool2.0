@@ -125,6 +125,17 @@ const en = {
     newItem: 'Create new item',
     typeMeeting: 'Meeting',
     typeAction: 'Action',
+    endTime: 'End time',
+    recurring: 'Recurring',
+    frequency: 'Frequency',
+    intervalEvery: 'Interval',
+    recurEnd: 'Repeat until',
+    frequencies: {
+      daily:   'Daily',
+      weekly:  'Weekly',
+      monthly: 'Monthly',
+      yearly:  'Yearly',
+    },
   },
   actions: {
     title: 'Actions',

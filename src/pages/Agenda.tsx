@@ -1,13 +1,13 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
-  format, startOfWeek, endOfWeek, addDays, subDays,
+  format, parseISO, startOfWeek, endOfWeek, addDays, subDays,
   addWeeks, subWeeks, addMonths, subMonths, addYears, subYears,
   startOfMonth, endOfMonth, isSameMonth, isSameDay,
   startOfYear, endOfYear, eachMonthOfInterval,
 } from 'date-fns'
 import { nl, enUS, sv } from 'date-fns/locale'
-import { ChevronLeft, ChevronRight, Calendar, Users, CheckSquare, Pencil, Trash2, Clock, MapPin, Check, X } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Calendar, Users, CheckSquare, Pencil, Trash2, Clock, MapPin, Check, X, Repeat } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '@/contexts/AuthContext'
 import Button from '@/components/ui/Button'
@@ -22,6 +22,7 @@ import type { V2Meeting, V2Action } from '@/types/database.types'
 import { cn, formatDate, priorityBgColor, statusBgColor } from '@/lib/utils'
 
 type AgendaView = 'day' | 'week' | 'month' | 'year'
+type RecurFrequency = 'daily' | 'weekly' | 'monthly' | 'yearly'
 
 /** px per 30-minute slot; 1 hour = 2 * SLOT_H = 64px */
 const SLOT_H = 32
@@ -78,13 +79,19 @@ export default function Agenda() {
   const [selDay, setSelDay]     = useState<Date | null>(null) // month-view detail
 
   // Quick-create modal state
-  const [qcOpen,     setQcOpen]     = useState(false)
-  const [qcDate,     setQcDate]     = useState('')
-  const [qcTime,     setQcTime]     = useState('')
-  const [qcType,     setQcType]     = useState<'meeting' | 'action'>('meeting')
-  const [qcTitle,    setQcTitle]    = useState('')
-  const [qcPriority, setQcPriority] = useState('medium')
-  const [qcSaving,   setQcSaving]   = useState(false)
+  const [qcOpen,      setQcOpen]      = useState(false)
+  const [qcDate,      setQcDate]      = useState('')
+  const [qcTime,      setQcTime]      = useState('')
+  const [qcEndTime,   setQcEndTime]   = useState('')
+  const [qcType,      setQcType]      = useState<'meeting' | 'action'>('meeting')
+  const [qcTitle,     setQcTitle]     = useState('')
+  const [qcPriority,  setQcPriority]  = useState('medium')
+  const [qcSaving,    setQcSaving]    = useState(false)
+  // Recurring state
+  const [qcRecurring, setQcRecurring] = useState(false)
+  const [qcFrequency, setQcFrequency] = useState<RecurFrequency>('weekly')
+  const [qcInterval,  setQcInterval]  = useState(1)
+  const [qcRecurEnd,  setQcRecurEnd]  = useState('')
 
   // Event detail modal
   const [evtOpen,    setEvtOpen]    = useState(false)
@@ -184,10 +191,32 @@ export default function Agenda() {
   function openQC(date: Date, hour: number, half = false) {
     setQcDate(format(date, 'yyyy-MM-dd'))
     setQcTime(`${String(hour).padStart(2, '0')}:${half ? '30' : '00'}`)
+    setQcEndTime('')
     setQcTitle('')
     setQcType('meeting')
     setQcPriority('medium')
+    setQcRecurring(false)
+    setQcFrequency('weekly')
+    setQcInterval(1)
+    setQcRecurEnd('')
     setQcOpen(true)
+  }
+
+  /** Generate a list of ISO date strings for a recurrence series (capped at 500). */
+  function generateRecurDates(startDate: string, freq: RecurFrequency, interval: number, endDate: string): string[] {
+    const dates: string[] = [startDate]
+    let current = parseISO(startDate)
+    const end   = parseISO(endDate)
+    const step  = Math.max(1, interval)
+    while (dates.length < 500) {
+      if      (freq === 'daily')   current = addDays(current, step)
+      else if (freq === 'weekly')  current = addWeeks(current, step)
+      else if (freq === 'monthly') current = addMonths(current, step)
+      else                         current = addYears(current, step)
+      if (current > end) break
+      dates.push(format(current, 'yyyy-MM-dd'))
+    }
+    return dates
   }
 
   async function saveQC() {
@@ -195,24 +224,32 @@ export default function Agenda() {
     setQcSaving(true)
     try {
       if (qcType === 'meeting') {
-        await createMeeting({
-          user_id: user.id,
-          title: qcTitle.trim(),
-          date: qcDate,
-          start_time: qcTime || null,
-          end_time: null,
-          location: null,
+        const meetingBase = {
+          user_id:      user.id,
+          title:        qcTitle.trim(),
+          start_time:   qcTime    || null,
+          end_time:     qcEndTime || null,
+          location:     null,
           participants: null,
-          notes: null,
-        })
+          notes:        null,
+        }
+        if (qcRecurring && qcRecurEnd) {
+          const dates = generateRecurDates(qcDate, qcFrequency, qcInterval, qcRecurEnd)
+          // Create all occurrences sequentially to avoid DB overload
+          for (const date of dates) {
+            await createMeeting({ ...meetingBase, date })
+          }
+        } else {
+          await createMeeting({ ...meetingBase, date: qcDate })
+        }
       } else {
         await createAction({
-          user_id: user.id,
-          title: qcTitle.trim(),
-          status: 'open',
-          priority: qcPriority,
+          user_id:    user.id,
+          title:      qcTitle.trim(),
+          status:     'open',
+          priority:   qcPriority,
           start_date: qcDate,
-          due_date: qcDate,
+          due_date:   qcDate,
         })
       }
       setQcOpen(false)
@@ -1021,7 +1058,11 @@ export default function Agenda() {
             <Button variant="secondary" onClick={() => setQcOpen(false)}>
               {t('common.cancel')}
             </Button>
-            <Button onClick={saveQC} loading={qcSaving} disabled={!qcTitle.trim()}>
+            <Button
+              onClick={saveQC}
+              loading={qcSaving}
+              disabled={!qcTitle.trim() || (qcType === 'meeting' && qcRecurring && !qcRecurEnd)}
+            >
               {t('common.add')}
             </Button>
           </>
@@ -1061,25 +1102,106 @@ export default function Agenda() {
             value={qcTitle}
             onChange={e => setQcTitle(e.target.value)}
             autoFocus
-            onKeyDown={e => e.key === 'Enter' && !qcSaving && saveQC()}
+            onKeyDown={e => {
+              if (e.key === 'Enter' && !qcSaving && qcTitle.trim()
+                && !(qcType === 'meeting' && qcRecurring && !qcRecurEnd)) {
+                saveQC()
+              }
+            }}
             placeholder={qcType === 'meeting' ? 'Vergaderingtitel...' : 'Actietitel...'}
           />
 
-          <div className="grid grid-cols-2 gap-2">
-            <Input
-              label={t('common.date')}
-              type="date"
-              value={qcDate}
-              onChange={e => setQcDate(e.target.value)}
-            />
-            {qcType === 'meeting' ? (
+          {/* Date / time fields */}
+          {qcType === 'meeting' ? (
+            <>
+              <div className="grid grid-cols-2 gap-2">
+                <Input
+                  label={t('common.date')}
+                  type="date"
+                  value={qcDate}
+                  onChange={e => setQcDate(e.target.value)}
+                />
+                <Input
+                  label={t('meetings.startTime')}
+                  type="time"
+                  value={qcTime}
+                  onChange={e => setQcTime(e.target.value)}
+                />
+              </div>
               <Input
-                label={t('meetings.startTime')}
+                label={t('meetings.endTime')}
                 type="time"
-                value={qcTime}
-                onChange={e => setQcTime(e.target.value)}
+                value={qcEndTime}
+                onChange={e => setQcEndTime(e.target.value)}
               />
-            ) : (
+
+              {/* ── Recurring toggle ──────────────────────────────────── */}
+              <div className="rounded-lg border border-[var(--border)] overflow-hidden">
+                {/* Toggle header */}
+                <button
+                  type="button"
+                  onClick={() => setQcRecurring(v => !v)}
+                  className="w-full flex items-center justify-between px-3 py-2.5 text-sm bg-[var(--bg-page)] hover:bg-[var(--border)] transition-colors"
+                >
+                  <span className="flex items-center gap-2 text-[var(--text-secondary)]">
+                    <Repeat className="h-4 w-4" />
+                    {t('agenda.recurring')}
+                  </span>
+                  {/* Pill toggle */}
+                  <span className={cn(
+                    'relative inline-flex w-8 h-4 rounded-full transition-colors duration-200',
+                    qcRecurring ? 'bg-primary-500' : 'bg-[var(--border-strong,#94a3b8)]',
+                  )}>
+                    <span className={cn(
+                      'absolute top-0.5 w-3 h-3 rounded-full bg-white shadow transition-transform duration-200',
+                      qcRecurring ? 'translate-x-4' : 'translate-x-0.5',
+                    )} />
+                  </span>
+                </button>
+
+                {/* Recurring options */}
+                {qcRecurring && (
+                  <div className="px-3 pb-3 pt-2 space-y-2 border-t border-[var(--border)]">
+                    <div className="grid grid-cols-2 gap-2">
+                      <Select
+                        label={t('agenda.frequency')}
+                        value={qcFrequency}
+                        onChange={e => setQcFrequency(e.target.value as RecurFrequency)}
+                        options={[
+                          { value: 'daily',   label: t('agenda.frequencies.daily') },
+                          { value: 'weekly',  label: t('agenda.frequencies.weekly') },
+                          { value: 'monthly', label: t('agenda.frequencies.monthly') },
+                          { value: 'yearly',  label: t('agenda.frequencies.yearly') },
+                        ]}
+                      />
+                      <Input
+                        label={t('agenda.intervalEvery')}
+                        type="number"
+                        min={1}
+                        max={99}
+                        value={String(qcInterval)}
+                        onChange={e => setQcInterval(Math.max(1, parseInt(e.target.value) || 1))}
+                      />
+                    </div>
+                    <Input
+                      label={t('agenda.recurEnd')}
+                      type="date"
+                      value={qcRecurEnd}
+                      onChange={e => setQcRecurEnd(e.target.value)}
+                      min={qcDate}
+                    />
+                  </div>
+                )}
+              </div>
+            </>
+          ) : (
+            <div className="grid grid-cols-2 gap-2">
+              <Input
+                label={t('common.date')}
+                type="date"
+                value={qcDate}
+                onChange={e => setQcDate(e.target.value)}
+              />
               <Select
                 label={t('common.priority')}
                 value={qcPriority}
@@ -1091,8 +1213,8 @@ export default function Agenda() {
                   { value: 'urgent', label: t('actions.priority.urgent') },
                 ]}
               />
-            )}
-          </div>
+            </div>
+          )}
         </div>
       </Modal>
     </div>
