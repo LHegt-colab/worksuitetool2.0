@@ -316,11 +316,11 @@ export default function Agenda() {
       {/* ── Legend + hint ───────────────────────────────────────────────── */}
       <div className="flex items-center gap-4 text-xs text-[var(--text-secondary)] px-4 py-1.5 border-b border-[var(--border)] shrink-0">
         <span className="flex items-center gap-1.5">
-          <span className="w-2.5 h-2.5 rounded-sm bg-purple-500 opacity-80" />
+          <span className="w-2.5 h-2.5 rounded-sm bg-blue-500 opacity-90 border border-blue-600" />
           {t('agenda.meetings')}
         </span>
         <span className="flex items-center gap-1.5">
-          <span className="w-2.5 h-2.5 rounded-sm bg-blue-500 opacity-80" />
+          <span className="w-2.5 h-2.5 rounded-sm bg-sky-400 opacity-80" />
           {t('agenda.actions')}
         </span>
         {(view === 'day' || view === 'week') && (
@@ -353,7 +353,7 @@ export default function Agenda() {
                   >
                     <span className={cn('w-1.5 h-1.5 rounded-full shrink-0', priorityColor(a.priority))} />
                     <span className="truncate max-w-32">{a.title}</span>
-                    <TagDots tags={a.tags} max={3} dotSize={6} />
+                    <TagDots tags={a.tags} max={3} dotSize={10} />
                   </div>
                 ))}
               </div>
@@ -441,20 +441,20 @@ export default function Agenda() {
                         key={m.id}
                         onClick={e => openMeeting(m, e)}
                         onDoubleClick={e => e.stopPropagation()}
-                        className="absolute left-2 right-2 z-10 rounded-md px-2 py-1 bg-purple-100 dark:bg-purple-900/40 border border-purple-300 dark:border-purple-700 overflow-hidden cursor-pointer hover:brightness-95 transition-all"
+                        className="absolute left-2 right-2 z-10 rounded-md px-2 py-1 bg-blue-100 dark:bg-blue-900/40 border border-blue-300 dark:border-blue-700 overflow-hidden cursor-pointer hover:brightness-95 transition-all"
                         style={{ top, height: ht }}
                         title={m.title}
                       >
                         <div className="flex items-start gap-1">
-                          <p className="text-xs font-semibold text-purple-800 dark:text-purple-200 leading-tight truncate flex-1">
+                          <p className="text-xs font-semibold text-blue-800 dark:text-blue-200 leading-tight truncate flex-1">
                             {m.title}
                           </p>
-                          <TagDots tags={m.tags} max={3} dotSize={7} />
+                          <TagDots tags={m.tags} max={3} dotSize={11} />
                         </div>
                         {ht > SLOT_H && m.location && (
-                          <p className="text-xs text-purple-600 dark:text-purple-400 truncate">{m.location}</p>
+                          <p className="text-xs text-blue-600 dark:text-blue-400 truncate">{m.location}</p>
                         )}
-                        <p className="text-xs text-purple-500 dark:text-purple-400">
+                        <p className="text-xs text-blue-500 dark:text-blue-400">
                           {m.start_time.slice(0, 5)}{m.end_time && ` – ${m.end_time.slice(0, 5)}`}
                         </p>
                       </div>
@@ -505,7 +505,7 @@ export default function Agenda() {
                           >
                             <span className={cn('w-1.5 h-1.5 rounded-full shrink-0', priorityColor(a.priority))} />
                             <span className="truncate flex-1">{a.title}</span>
-                            <TagDots tags={a.tags} max={2} dotSize={5} />
+                            <TagDots tags={a.tags} max={2} dotSize={9} />
                           </div>
                         ))}
                         {dayActions.length > 2 && (
@@ -607,18 +607,18 @@ export default function Agenda() {
                             key={m.id}
                             onClick={e => openMeeting(m, e)}
                             onDoubleClick={e => e.stopPropagation()}
-                            className="absolute left-0.5 right-0.5 z-10 rounded px-1 py-0.5 bg-purple-100 dark:bg-purple-900/40 border border-purple-300 dark:border-purple-700 overflow-hidden cursor-pointer hover:brightness-95 transition-all"
+                            className="absolute left-0.5 right-0.5 z-10 rounded px-1 py-0.5 bg-blue-100 dark:bg-blue-900/40 border border-blue-300 dark:border-blue-700 overflow-hidden cursor-pointer hover:brightness-95 transition-all"
                             style={{ top, height: ht }}
                             title={m.title}
                           >
                             <div className="flex items-start gap-1">
-                              <p className="text-xs font-medium text-purple-800 dark:text-purple-200 leading-tight truncate flex-1">
+                              <p className="text-xs font-medium text-blue-800 dark:text-blue-200 leading-tight truncate flex-1">
                                 {m.title}
                               </p>
-                              <TagDots tags={m.tags} max={2} dotSize={6} />
+                              <TagDots tags={m.tags} max={2} dotSize={10} />
                             </div>
                             {ht > SLOT_H && (
-                              <p className="text-xs text-purple-500 dark:text-purple-400">
+                              <p className="text-xs text-blue-500 dark:text-blue-400">
                                 {m.start_time.slice(0, 5)}{m.end_time && `–${m.end_time.slice(0, 5)}`}
                               </p>
                             )}
@@ -691,14 +691,14 @@ export default function Agenda() {
                             key={m.id}
                             onClick={e => openMeeting(m, e)}
                             onDoubleClick={e => e.stopPropagation()}
-                            className="calendar-event text-xs bg-purple-100 dark:bg-purple-900/30 text-purple-800 dark:text-purple-300 px-1 py-0.5 rounded flex items-center gap-0.5 overflow-hidden cursor-pointer hover:bg-purple-200 dark:hover:bg-purple-900/50 transition-colors"
+                            className="calendar-event text-xs bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300 px-1 py-0.5 rounded flex items-center gap-0.5 overflow-hidden cursor-pointer hover:bg-blue-200 dark:hover:bg-blue-900/50 transition-colors"
                             title={m.title}
                           >
                             {m.start_time && (
                               <span className="font-medium shrink-0">{m.start_time.slice(0, 5)}</span>
                             )}
                             <span className="truncate flex-1">{m.title}</span>
-                            <TagDots tags={m.tags} max={2} dotSize={5} />
+                            <TagDots tags={m.tags} max={2} dotSize={9} />
                           </div>
                         ))}
                         {dayActions.slice(0, 2).map(a => (
@@ -711,7 +711,7 @@ export default function Agenda() {
                           >
                             <span className={cn('w-1.5 h-1.5 rounded-full shrink-0', priorityColor(a.priority))} />
                             <span className="truncate flex-1">{a.title}</span>
-                            <TagDots tags={a.tags} max={2} dotSize={5} />
+                            <TagDots tags={a.tags} max={2} dotSize={9} />
                           </div>
                         ))}
                         {(dayMeetings.length + dayActions.length) > 4 && (
@@ -747,7 +747,7 @@ export default function Agenda() {
                               <span className="text-xs text-[var(--text-muted)] font-mono shrink-0">{m.start_time.slice(0, 5)}</span>
                             )}
                             <span className="truncate flex-1">{m.title}</span>
-                            <TagDots tags={m.tags} max={3} dotSize={8} />
+                            <TagDots tags={m.tags} max={3} dotSize={12} />
                           </div>
                         ))}
                       </div>
@@ -765,7 +765,7 @@ export default function Agenda() {
                           >
                             <span className={cn('w-2 h-2 rounded-full shrink-0', priorityColor(a.priority))} />
                             <span className="truncate flex-1">{a.title}</span>
-                            <TagDots tags={a.tags} max={3} dotSize={8} />
+                            <TagDots tags={a.tags} max={3} dotSize={12} />
                           </div>
                         ))}
                       </div>
@@ -1023,7 +1023,7 @@ export default function Agenda() {
               className={cn(
                 'flex-1 py-2 flex items-center justify-center gap-2 transition-colors',
                 qcType === 'meeting'
-                  ? 'bg-purple-500 text-white'
+                  ? 'bg-blue-500 text-white'
                   : 'text-[var(--text-secondary)] hover:bg-[var(--bg-page)]',
               )}
             >

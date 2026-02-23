@@ -49,14 +49,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   async function fetchProfile(userId: string) {
     try {
+      // maybeSingle() returns null (not 406) when no row exists
       const { data, error } = await supabase
         .from('v2_profiles')
         .select('*')
         .eq('id', userId)
-        .single()
+        .maybeSingle()
 
-      if (error && error.code !== 'PGRST116') {
+      if (error) {
         console.error('Error fetching profile:', error)
+        return
       }
 
       if (data) {
@@ -68,6 +70,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             localStorage.setItem('wst_language', profileData.language)
           }
         }
+      } else {
+        // No profile yet (e.g. existing auth user before trigger) – create one
+        const { data: created } = await supabase
+          .from('v2_profiles')
+          .insert({ id: userId, language: 'nl', theme: 'light' } as Record<string, unknown>)
+          .select()
+          .maybeSingle()
+        if (created) setProfile(created as unknown as V2Profile)
       }
     } catch (err) {
       console.error('Profile fetch error:', err)
