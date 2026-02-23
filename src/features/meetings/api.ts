@@ -12,8 +12,8 @@ export async function getMeetings(userId: string): Promise<V2Meeting[]> {
       )
     `)
     .eq('user_id', userId)
-    .order('date', { ascending: false })
-    .order('start_time', { ascending: false })
+    .order('date', { ascending: true })
+    .order('start_time', { ascending: true })
 
   if (error) throw error
 

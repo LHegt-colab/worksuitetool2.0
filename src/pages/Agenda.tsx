@@ -18,7 +18,9 @@ import Modal, { ConfirmModal } from '@/components/ui/Modal'
 import { TagBadge } from '@/components/ui/Badge'
 import { getMeetings, createMeeting, deleteMeeting } from '@/features/meetings/api'
 import { getActions, createAction, deleteAction, markActionDone } from '@/features/actions/api'
-import type { V2Meeting, V2Action } from '@/types/database.types'
+import { getTags } from '@/features/tags/api'
+import TagSelector from '@/features/tags/TagSelector'
+import type { V2Meeting, V2Action, V2Tag } from '@/types/database.types'
 import { cn, formatDate, priorityBgColor, statusBgColor } from '@/lib/utils'
 
 type AgendaView = 'day' | 'week' | 'month' | 'year'
@@ -75,6 +77,7 @@ export default function Agenda() {
   const [current, setCurrent]   = useState(new Date())
   const [meetings, setMeetings] = useState<V2Meeting[]>([])
   const [actions, setActions]   = useState<V2Action[]>([])
+  const [tags, setTags]         = useState<V2Tag[]>([])
   const [loading, setLoading]   = useState(true)
   const [selDay, setSelDay]     = useState<Date | null>(null) // month-view detail
 
@@ -92,6 +95,8 @@ export default function Agenda() {
   const [qcFrequency, setQcFrequency] = useState<RecurFrequency>('weekly')
   const [qcInterval,  setQcInterval]  = useState(1)
   const [qcRecurEnd,  setQcRecurEnd]  = useState('')
+  // Label state for QC modal
+  const [qcTagIds,    setQcTagIds]    = useState<string[]>([])
 
   // Event detail modal
   const [evtOpen,    setEvtOpen]    = useState(false)
@@ -110,9 +115,10 @@ export default function Agenda() {
     if (!user) return
     setLoading(true)
     try {
-      const [m, a] = await Promise.all([getMeetings(user.id), getActions(user.id)])
+      const [m, a, tgs] = await Promise.all([getMeetings(user.id), getActions(user.id), getTags(user.id)])
       setMeetings(m)
       setActions(a)
+      setTags(tgs)
     } finally {
       setLoading(false)
     }
@@ -202,6 +208,7 @@ export default function Agenda() {
     setQcFrequency('weekly')
     setQcInterval(1)
     setQcRecurEnd('')
+    setQcTagIds([])
     setQcOpen(true)
   }
 
@@ -235,6 +242,7 @@ export default function Agenda() {
           location:     null,
           participants: null,
           notes:        null,
+          tag_ids:      qcTagIds.length > 0 ? qcTagIds : undefined,
         }
         if (qcRecurring) {
           // If no end date given, default to 1 year from start date
@@ -1134,6 +1142,15 @@ export default function Agenda() {
                 value={qcEndTime}
                 onChange={e => setQcEndTime(e.target.value)}
               />
+
+              {tags.length > 0 && (
+                <TagSelector
+                  allTags={tags}
+                  selectedTagIds={qcTagIds}
+                  onChange={setQcTagIds}
+                  label={t('common.labels')}
+                />
+              )}
 
               {/* ── Recurring toggle ──────────────────────────────────── */}
               <div className="rounded-lg border border-[var(--border)] overflow-hidden">
