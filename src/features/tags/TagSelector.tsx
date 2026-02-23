@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
 import { Plus, Tag, Check } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -16,17 +17,36 @@ interface TagSelectorProps {
 export default function TagSelector({ allTags, selectedTagIds, onChange, label, onManageTags }: TagSelectorProps) {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
+  const [dropdownPos, setDropdownPos] = useState({ top: 0, left: 0, minWidth: 176 })
   const containerRef = useRef<HTMLDivElement>(null)
+  const buttonRef    = useRef<HTMLButtonElement>(null)
+  const dropdownRef  = useRef<HTMLDivElement>(null)
 
+  // Close on outside click — also accounts for the portal dropdown
   useEffect(() => {
     function handleClick(e: MouseEvent) {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+      if (
+        containerRef.current && !containerRef.current.contains(e.target as Node) &&
+        (!dropdownRef.current   || !dropdownRef.current.contains(e.target as Node))
+      ) {
         setOpen(false)
       }
     }
     document.addEventListener('mousedown', handleClick)
     return () => document.removeEventListener('mousedown', handleClick)
   }, [])
+
+  function handleOpen() {
+    if (!open && buttonRef.current) {
+      const rect        = buttonRef.current.getBoundingClientRect()
+      const spaceBelow  = window.innerHeight - rect.bottom
+      const maxH        = 200 // approximate dropdown max-height
+      // Flip upward if not enough room below
+      const top = spaceBelow >= maxH ? rect.bottom + 4 : Math.max(8, rect.top - maxH - 4)
+      setDropdownPos({ top, left: rect.left, minWidth: Math.max(176, rect.width) })
+    }
+    setOpen(v => !v)
+  }
 
   const selectedTags = allTags.filter(t => selectedTagIds.includes(t.id))
 
@@ -55,7 +75,7 @@ export default function TagSelector({ allTags, selectedTagIds, onChange, label, 
         </div>
       )}
 
-      {/* Selected tags */}
+      {/* Selected tags + add button */}
       <div className="flex flex-wrap gap-1.5 min-h-8">
         {selectedTags.map(tag => (
           <TagBadge
@@ -66,10 +86,10 @@ export default function TagSelector({ allTags, selectedTagIds, onChange, label, 
           />
         ))}
 
-        {/* Add tag button */}
         <button
+          ref={buttonRef}
           type="button"
-          onClick={() => setOpen(!open)}
+          onClick={handleOpen}
           className={cn(
             'inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs',
             'border border-dashed border-[var(--border-strong)] text-[var(--text-muted)]',
@@ -81,13 +101,15 @@ export default function TagSelector({ allTags, selectedTagIds, onChange, label, 
         </button>
       </div>
 
-      {/* Dropdown */}
-      {open && (
-        <div className={cn(
-          'absolute z-20 mt-1 bg-[var(--bg-card)] border border-[var(--border)]',
-          'rounded-xl shadow-[var(--shadow-lg)] py-1 min-w-44 max-h-48 overflow-y-auto',
-        )}
-        style={{ top: '100%', left: 0 }}
+      {/* Dropdown rendered via portal so it escapes overflow:hidden/auto containers */}
+      {open && createPortal(
+        <div
+          ref={dropdownRef}
+          className={cn(
+            'fixed z-[300] bg-[var(--bg-card)] border border-[var(--border)]',
+            'rounded-xl shadow-lg py-1 max-h-48 overflow-y-auto',
+          )}
+          style={{ top: dropdownPos.top, left: dropdownPos.left, minWidth: dropdownPos.minWidth }}
         >
           {allTags.length === 0 ? (
             <div className="px-3 py-2 text-xs text-[var(--text-muted)]">
@@ -95,7 +117,7 @@ export default function TagSelector({ allTags, selectedTagIds, onChange, label, 
             </div>
           ) : (
             allTags.map(tag => {
-              const selected = selectedTagIds.includes(tag.id)
+              const sel = selectedTagIds.includes(tag.id)
               return (
                 <button
                   key={tag.id}
@@ -105,7 +127,7 @@ export default function TagSelector({ allTags, selectedTagIds, onChange, label, 
                 >
                   <span className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: tag.color }} />
                   <span className="flex-1 text-sm text-[var(--text-primary)]">{tag.name}</span>
-                  {selected && <Check className="h-3.5 w-3.5 text-primary-500 shrink-0" />}
+                  {sel && <Check className="h-3.5 w-3.5 text-primary-500 shrink-0" />}
                 </button>
               )
             })
@@ -123,7 +145,8 @@ export default function TagSelector({ allTags, selectedTagIds, onChange, label, 
               </button>
             </>
           )}
-        </div>
+        </div>,
+        document.body,
       )}
     </div>
   )
