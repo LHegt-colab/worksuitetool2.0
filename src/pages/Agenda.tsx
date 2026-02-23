@@ -14,7 +14,7 @@ import Button from '@/components/ui/Button'
 import { PageSpinner } from '@/components/ui/Spinner'
 import Input from '@/components/ui/Input'
 import Select from '@/components/ui/Select'
-import Modal, { ConfirmModal } from '@/components/ui/Modal'
+import Modal from '@/components/ui/Modal'
 import { TagBadge } from '@/components/ui/Badge'
 import { getMeetings, createMeeting, deleteMeeting } from '@/features/meetings/api'
 import { getActions, createAction, deleteAction, markActionDone } from '@/features/actions/api'
@@ -103,8 +103,9 @@ export default function Agenda() {
   const [evtType,    setEvtType]    = useState<'meeting' | 'action'>('meeting')
   const [evtMeeting, setEvtMeeting] = useState<V2Meeting | null>(null)
   const [evtAction,  setEvtAction]  = useState<V2Action | null>(null)
-  const [evtDeleteConfirm, setEvtDeleteConfirm] = useState(false)
-  const [evtDeleting,      setEvtDeleting]      = useState(false)
+  const [evtDeleteConfirm,   setEvtDeleteConfirm]   = useState(false)
+  const [evtDeleteSiblingIds, setEvtDeleteSiblingIds] = useState<string[]>([])
+  const [evtDeleting,        setEvtDeleting]        = useState(false)
   const [evtMarkingDone,   setEvtMarkingDone]   = useState(false)
 
   const navigate  = useNavigate()
@@ -289,16 +290,22 @@ export default function Agenda() {
     setEvtOpen(true)
   }
 
-  async function handleEvtDelete() {
+  async function handleEvtDelete(deleteAll = false) {
     setEvtDeleting(true)
     try {
       if (evtType === 'meeting' && evtMeeting) {
         await deleteMeeting(evtMeeting.id)
+        if (deleteAll) {
+          for (const id of evtDeleteSiblingIds) {
+            await deleteMeeting(id)
+          }
+        }
       } else if (evtType === 'action' && evtAction) {
         await deleteAction(evtAction.id)
       }
       setEvtOpen(false)
       setEvtDeleteConfirm(false)
+      setEvtDeleteSiblingIds([])
       load()
     } finally {
       setEvtDeleting(false)
@@ -917,7 +924,18 @@ export default function Agenda() {
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => setEvtDeleteConfirm(true)}
+              onClick={() => {
+                if (evtType === 'meeting' && evtMeeting) {
+                  const normTime = evtMeeting.start_time ? evtMeeting.start_time.slice(0, 5) : null
+                  const siblings = meetings.filter(m =>
+                    m.id !== evtMeeting.id &&
+                    m.title === evtMeeting.title &&
+                    (m.start_time ? m.start_time.slice(0, 5) : null) === normTime
+                  )
+                  setEvtDeleteSiblingIds(siblings.map(s => s.id))
+                }
+                setEvtDeleteConfirm(true)
+              }}
               className="text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
               icon={<Trash2 className="h-4 w-4" />}
             >
@@ -1046,16 +1064,44 @@ export default function Agenda() {
       </Modal>
 
       {/* ── Delete Confirm Modal ─────────────────────────────────────────── */}
-      <ConfirmModal
+      <Modal
         open={evtDeleteConfirm}
-        onClose={() => setEvtDeleteConfirm(false)}
-        onConfirm={handleEvtDelete}
+        onClose={() => { setEvtDeleteConfirm(false); setEvtDeleteSiblingIds([]) }}
         title={t('common.delete')}
-        message={t('common.deleteConfirm')}
-        confirmLabel={t('common.delete')}
-        cancelLabel={t('common.cancel')}
-        loading={evtDeleting}
-      />
+        size="sm"
+        footer={
+          evtDeleteSiblingIds.length > 0 ? (
+            <div className="flex items-center gap-2 w-full">
+              <Button variant="secondary" onClick={() => { setEvtDeleteConfirm(false); setEvtDeleteSiblingIds([]) }}>
+                {t('common.cancel')}
+              </Button>
+              <div className="flex-1" />
+              <Button variant="danger" size="sm" onClick={() => handleEvtDelete(false)} loading={evtDeleting}>
+                Alleen deze
+              </Button>
+              <Button variant="danger" size="sm" onClick={() => handleEvtDelete(true)} loading={evtDeleting}>
+                Gehele reeks ({evtDeleteSiblingIds.length + 1})
+              </Button>
+            </div>
+          ) : (
+            <>
+              <Button variant="secondary" onClick={() => setEvtDeleteConfirm(false)}>
+                {t('common.cancel')}
+              </Button>
+              <Button variant="danger" onClick={() => handleEvtDelete(false)} loading={evtDeleting}>
+                {t('common.delete')}
+              </Button>
+            </>
+          )
+        }
+      >
+        <p className="text-[var(--text-secondary)]">
+          {evtDeleteSiblingIds.length > 0
+            ? `Er zijn ${evtDeleteSiblingIds.length} andere afspraken in deze reeks. Wil je alleen deze verwijderen of de gehele reeks?`
+            : t('common.deleteConfirm')
+          }
+        </p>
+      </Modal>
 
       {/* ── Quick-Create Modal ───────────────────────────────────────────── */}
       <Modal

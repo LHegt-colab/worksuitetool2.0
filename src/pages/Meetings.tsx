@@ -9,7 +9,7 @@ import Card from '@/components/ui/Card'
 import Button from '@/components/ui/Button'
 import Input from '@/components/ui/Input'
 import Textarea from '@/components/ui/Textarea'
-import Modal, { ConfirmModal } from '@/components/ui/Modal'
+import Modal from '@/components/ui/Modal'
 import { TagBadge } from '@/components/ui/Badge'
 import { PageSpinner } from '@/components/ui/Spinner'
 import TagSelector from '@/features/tags/TagSelector'
@@ -37,6 +37,7 @@ export default function Meetings() {
   const [selectedDetail, setSelectedDetail] = useState<V2Meeting | null>(null)
   const [deleteModal, setDeleteModal] = useState<string | null>(null)
   const [deleting, setDeleting] = useState(false)
+  const [deleteSiblingIds, setDeleteSiblingIds] = useState<string[]>([])
   const [saving, setSaving] = useState(false)
   // Series label propagation
   const [seriesConfirm, setSeriesConfirm]   = useState(false)
@@ -187,12 +188,29 @@ export default function Meetings() {
     }
   }
 
-  async function handleDelete() {
+  function handleDeleteClick(meeting: V2Meeting) {
+    const normTime = meeting.start_time ? meeting.start_time.slice(0, 5) : null
+    const siblings = meetings.filter(m =>
+      m.id !== meeting.id &&
+      m.title === meeting.title &&
+      (m.start_time ? m.start_time.slice(0, 5) : null) === normTime
+    )
+    setDeleteSiblingIds(siblings.map(s => s.id))
+    setDeleteModal(meeting.id)
+  }
+
+  async function handleDelete(deleteAll = false) {
     if (!deleteModal) return
     setDeleting(true)
     try {
       await deleteMeeting(deleteModal)
+      if (deleteAll) {
+        for (const id of deleteSiblingIds) {
+          await deleteMeeting(id)
+        }
+      }
       setDeleteModal(null)
+      setDeleteSiblingIds([])
       setSelected(null)
       setSelectedDetail(null)
       load()
@@ -390,7 +408,7 @@ export default function Meetings() {
                         <Button variant="ghost" size="sm" onClick={() => setEditMode(true)} icon={<Pencil className="h-4 w-4" />}>
                           {t('common.edit')}
                         </Button>
-                        <Button variant="ghost" size="sm" onClick={() => setDeleteModal(selected.id)}
+                        <Button variant="ghost" size="sm" onClick={() => handleDeleteClick(selected)}
                           className="text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20">
                           <Trash2 className="h-4 w-4" />
                         </Button>
@@ -750,16 +768,44 @@ export default function Meetings() {
         </p>
       </Modal>
 
-      <ConfirmModal
+      <Modal
         open={!!deleteModal}
-        onClose={() => setDeleteModal(null)}
-        onConfirm={handleDelete}
+        onClose={() => { setDeleteModal(null); setDeleteSiblingIds([]) }}
         title={t('common.delete')}
-        message={t('common.deleteConfirm')}
-        confirmLabel={t('common.delete')}
-        cancelLabel={t('common.cancel')}
-        loading={deleting}
-      />
+        size="sm"
+        footer={
+          deleteSiblingIds.length > 0 ? (
+            <div className="flex items-center gap-2 w-full">
+              <Button variant="secondary" onClick={() => { setDeleteModal(null); setDeleteSiblingIds([]) }}>
+                {t('common.cancel')}
+              </Button>
+              <div className="flex-1" />
+              <Button variant="danger" size="sm" onClick={() => handleDelete(false)} loading={deleting}>
+                Alleen deze
+              </Button>
+              <Button variant="danger" size="sm" onClick={() => handleDelete(true)} loading={deleting}>
+                Gehele reeks ({deleteSiblingIds.length + 1})
+              </Button>
+            </div>
+          ) : (
+            <>
+              <Button variant="secondary" onClick={() => { setDeleteModal(null); setDeleteSiblingIds([]) }}>
+                {t('common.cancel')}
+              </Button>
+              <Button variant="danger" onClick={() => handleDelete(false)} loading={deleting}>
+                {t('common.delete')}
+              </Button>
+            </>
+          )
+        }
+      >
+        <p className="text-[var(--text-secondary)]">
+          {deleteSiblingIds.length > 0
+            ? `Er zijn ${deleteSiblingIds.length} andere afspraken in deze reeks. Wil je alleen deze verwijderen of de gehele reeks?`
+            : t('common.deleteConfirm')
+          }
+        </p>
+      </Modal>
     </div>
   )
 }
