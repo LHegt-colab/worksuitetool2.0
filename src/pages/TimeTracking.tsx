@@ -132,15 +132,15 @@ export default function TimeTracking() {
     setRows(prev => ({ ...prev, [dateStr]: { ...(prev[dateStr] ?? emptyRow()), ...patch } }))
   }
 
-  function scheduleAutosave(dateStr: string) {
+  // Pass the latest row snapshot directly to avoid stale-closure over `rows` state
+  function scheduleAutosave(dateStr: string, latestRow: RowState) {
     clearTimeout(saveTimers.current[dateStr])
-    saveTimers.current[dateStr] = setTimeout(() => doSave(dateStr), 900)
+    saveTimers.current[dateStr] = setTimeout(() => doSaveRow(dateStr, latestRow), 900)
   }
 
-  async function doSave(dateStr: string) {
+  async function doSaveRow(dateStr: string, r: RowState) {
     if (!user) return
-    const r = rows[dateStr] ?? emptyRow()
-    // Only save if at least start or end is provided
+    // Nothing to save if both start and end are empty
     if (!r.start && !r.end) return
     updateRow(dateStr, { saving: true, saved: false })
     try {
@@ -158,8 +158,10 @@ export default function TimeTracking() {
   }
 
   function handleChange(dateStr: string, field: keyof RowState, value: string) {
-    updateRow(dateStr, { [field]: value } as Partial<RowState>)
-    scheduleAutosave(dateStr)
+    // Build the updated row first, then pass it along so the timer never reads stale state
+    const updated: RowState = { ...(rows[dateStr] ?? emptyRow()), [field]: value }
+    setRows(prev => ({ ...prev, [dateStr]: updated }))
+    scheduleAutosave(dateStr, updated)
   }
 
   // ── Calculations ─────────────────────────────────────────────────────────
